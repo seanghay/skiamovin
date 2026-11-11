@@ -34,7 +34,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Motion blur | `motionBlur: { shutter, samples }` on a composition: averages moments within the shutter in half-float linear light |
 | Film camera | `shot()` sizes with rule-of-thirds placement, `cameraMove()`, `handheld()`, `edit()` between cameras, and 'dissolve', 'fade' and 'wipe' transition names |
 | Loudness and delivery | `audio.loudness` in `Render` normalizes the mix to a LUFS target (BS.1770 / EBU R128, gated); `deliveryPresets` for YouTube, Instagram, TikTok and broadcast |
-| CLI | `skiamovin render`, `still`, `inspect` (JSON for tools and agents) and `info` |
+| CLI | `skiamovin render` (with presets and `--variants`), `still`, `sheet` (contact sheets), `inspect` (JSON for tools and agents) and `info` |
 | Sound mix | Audio roles (dialogue, music, effects); music ducks under dialogue clips; stems by role in `Render` and `CompositionAudioSink` |
 | Hand-drawn strokes | `stroke()`: variable-width, tapered strokes from points with pressure or along a path, drawn on over time |
 | Scattering | `scatter()` in an area, along a path or on a grid, seeded; `lookAt()` |

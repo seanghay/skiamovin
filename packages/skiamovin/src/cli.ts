@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The `skiamovin` command: render videos and stills, inspect compositions as JSON, and report what this machine
 // supports.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -15,7 +15,7 @@ import {
   type VideoCodec,
   WebMOutputFormat,
 } from 'mediabunny';
-import { EncodedImageFormat, gpu, init, version } from './index.ts';
+import { EncodedImageFormat, gpu, init, surfaces, version } from './index.ts';
 import { type Composition, CompositionModule } from './scene/composition.ts';
 import { deliveryPresets } from './scene/loudness.ts';
 import type { SceneNode } from './scene/nodes.ts';
@@ -27,6 +27,9 @@ const HELP = `skiamovin <command>
   render <module> <out> [--props JSON] [--export NAME] [--codec avc|hevc|vp9|av1] [--preset youtube|instagram|
          tiktok|broadcast] [--loudness LUFS] [--start S] [--end S] [--concurrency N|auto]
   still <module> <out.png|.jpg|.webp> [--timestamp S] [--props JSON] [--export NAME]
+         [--variants FILE.json]  (one render per named set of props: out-<name>.mp4)
+  sheet <module> <out.png> [--count N] [--columns N] [--width PX] [--props JSON]
+         A contact sheet: frames spread over the video, in a grid. Prints the frame times as JSON.
   inspect <module> [--timestamp S] [--props JSON] [--export NAME]
          Prints the composition's settings and its node tree at a time, as JSON.
   info   Prints the version, GPU and codecs, as JSON.
@@ -69,6 +72,10 @@ async function main(argv: string[]): Promise<number> {
       end: { type: 'string' },
       concurrency: { type: 'string' },
       timestamp: { type: 'string', default: '0' },
+      variants: { type: 'string' },
+      count: { type: 'string' },
+      columns: { type: 'string' },
+      width: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -77,7 +84,7 @@ async function main(argv: string[]): Promise<number> {
     process.stdout.write(HELP);
     return command ? 0 : 1;
   }
-  if (!['render', 'still', 'inspect', 'info'].includes(command))
+  if (!['render', 'still', 'sheet', 'inspect', 'info'].includes(command))
     throw new Error(`unknown command '${command}'. Run skiamovin --help.`);
   await init();
   if (command === 'info') {
@@ -127,36 +134,77 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  if (command === 'sheet') {
+    // Frames spread evenly over the video, in a grid, so the whole video can be seen at a glance.
+    const count = Math.max(1, Number(values.count ?? 12));
+    const columns = Math.min(count, Number(values.columns ?? 4));
+    const cellW = Number(values.width ?? 480);
+    const cellH = Math.round((cellW * comp.height) / comp.width);
+    const gap = 8;
+    const rows = Math.ceil(count / columns);
+    const surface = surfaces.rasterN32Premul([columns * cellW + (columns + 1) * gap, rows * cellH + (rows + 1) * gap]);
+    if (!surface) throw new Error('sheet: could not allocate the image');
+    const canvas = surface.canvas();
+    canvas.clear('#111111');
+    const sink = new CompositionSink(comp, { props, width: cellW, height: cellH });
+    const duration = await comp.computeDuration({ ...comp.defaultProps, ...props });
+    const times: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const at = ((i + 0.5) / count) * duration;
+      times.push(Math.round(at * 1000) / 1000);
+      const frame = await sink.getImage(at);
+      if (frame)
+        canvas.drawImage(frame.image, [
+          gap + (i % columns) * (cellW + gap),
+          gap + Math.floor(i / columns) * (cellH + gap),
+        ]);
+    }
+    await sink.dispose();
+    const bytes = surface.imageSnapshot().encodeToData(EncodedImageFormat.PNG);
+    surface.delete();
+    if (!bytes) throw new Error('sheet: could not encode the image');
+    writeFileSync(out, bytes);
+    process.stdout.write(`${JSON.stringify({ columns, rows, times })}\n`);
+    return 0;
+  }
+
   if (command === 'render') {
     const preset = values.preset ? deliveryPresets[values.preset as keyof typeof deliveryPresets] : undefined;
     if (values.preset && !preset) throw new Error(`render: unknown preset '${values.preset}'`);
-    const output = new Output({ format: formatFor(out), target: new FilePathTarget(out) });
-    const render = await Render.init({
-      composition: module,
-      output,
-      props,
-      video: { ...preset?.video, ...(values.codec ? { codec: values.codec as VideoCodec } : {}) },
-      audio: {
-        ...preset?.audio,
-        ...(values.loudness !== undefined ? { loudness: Number(values.loudness) } : {}),
-      },
-      trim: {
-        ...(values.start !== undefined ? { start: Number(values.start) } : {}),
-        ...(values.end !== undefined ? { end: Number(values.end) } : {}),
-      },
-      concurrency:
-        values.concurrency === undefined || values.concurrency === 'auto' ? 'auto' : Number(values.concurrency),
-    });
-    if (!render.isValid)
-      throw new Error(`render: can't render this output (${JSON.stringify(render.discardedTracks)})`);
-    let shown = -1;
-    render.onProgress = (p) => {
-      const pct = Math.floor(p * 100);
-      if (pct !== shown && process.stderr.isTTY) process.stderr.write(`\r${pct}%`);
-      shown = pct;
-    };
-    await render.execute();
-    if (process.stderr.isTTY) process.stderr.write('\r');
+    // With --variants, render once per named set of props: out.mp4 becomes out-<name>.mp4.
+    const variants: [string | null, unknown][] = values.variants
+      ? Object.entries(JSON.parse(readFileSync(values.variants, 'utf8')) as Record<string, unknown>)
+      : [[null, props]];
+    for (const [name, variantProps] of variants) {
+      const target = name === null ? out : out.replace(/(\.[^./]+)?$/, (ext) => `-${name}${ext}`);
+      const output = new Output({ format: formatFor(target), target: new FilePathTarget(target) });
+      const render = await Render.init({
+        composition: module,
+        output,
+        props: variantProps as never,
+        video: { ...preset?.video, ...(values.codec ? { codec: values.codec as VideoCodec } : {}) },
+        audio: {
+          ...preset?.audio,
+          ...(values.loudness !== undefined ? { loudness: Number(values.loudness) } : {}),
+        },
+        trim: {
+          ...(values.start !== undefined ? { start: Number(values.start) } : {}),
+          ...(values.end !== undefined ? { end: Number(values.end) } : {}),
+        },
+        concurrency:
+          values.concurrency === undefined || values.concurrency === 'auto' ? 'auto' : Number(values.concurrency),
+      });
+      if (!render.isValid)
+        throw new Error(`render: can't render this output (${JSON.stringify(render.discardedTracks)})`);
+      let shown = -1;
+      render.onProgress = (p) => {
+        const pct = Math.floor(p * 100);
+        if (pct !== shown && process.stderr.isTTY) process.stderr.write(`\r${name ?? ''} ${pct}%`);
+        shown = pct;
+      };
+      await render.execute();
+      if (process.stderr.isTTY) process.stderr.write('\r');
+    }
     return 0;
   }
   return 1;

@@ -43,3 +43,14 @@ test('cli: still and info', () => {
   assert.ok(info.gpu.backend);
   assert.throws(() => run('nope'), /unknown command/);
 });
+
+test('cli: contact sheet and variants', () => {
+  const sheet = `${OUT}cli-sheet.png`;
+  const report = JSON.parse(run('sheet', module(), sheet, '--count', '6', '--columns', '3', '--width', '160'));
+  assert.deepEqual(report, { columns: 3, rows: 2, times: [0.083, 0.25, 0.417, 0.583, 0.75, 0.917] });
+  assert.ok(existsSync(sheet));
+  const variants = `${OUT}cli-variants.json`;
+  writeFileSync(variants, JSON.stringify({ a: {}, b: {} }));
+  run('render', module(), `${OUT}cli-v.mp4`, '--variants', variants);
+  assert.ok(existsSync(`${OUT}cli-v-a.mp4`) && existsSync(`${OUT}cli-v-b.mp4`));
+});

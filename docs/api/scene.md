@@ -1402,12 +1402,16 @@ wraps an existing `Worker`, and `CompositionWorker.forModule()` starts the built
 ```sh
 npx skiamovin render src/promo.ts out.mp4 --props '{"title":"Hi"}' --preset youtube --concurrency auto
 npx skiamovin still src/promo.ts thumb.png --timestamp 1.5
+npx skiamovin sheet src/promo.ts sheet.png --count 12   # a contact sheet: frames over the video, in a grid
+npx skiamovin render src/promo.ts out.mp4 --variants variants.json   # out-<name>.mp4 for each named set of props
 npx skiamovin inspect src/promo.ts --timestamp 2   # settings and the node tree at 2 s, as JSON
 npx skiamovin info                                  # version, GPU and codecs, as JSON
 ```
 
 The module must export a `Composition` as `default`, or name one with `--export`. `render` picks the container
 from the file extension (`.mp4`, `.mov`, `.webm`, `.mkv`) and takes `--codec`, `--preset` (one of
-`deliveryPresets`), `--loudness` in LUFS, and `--start` and `--end` in seconds. `still` writes PNG, JPEG or WebP.
+`deliveryPresets`), `--loudness` in LUFS, and `--start` and `--end` in seconds. `still` writes PNG, JPEG or WebP. `sheet` takes `--count`, `--columns` and
+`--width` (of each frame) and prints the frame times as JSON, so you or an agent can check a whole video in one
+image.
 `inspect` is meant for tools and AI agents: it prints the size, frame rate, duration, events and fonts, and each
 node's type, plain-data style and text, without rendering.
