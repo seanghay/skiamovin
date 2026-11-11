@@ -522,7 +522,7 @@ fn hevc_alpha_encode() {
     };
     // Left half opaque red, right half fully transparent.
     let mut frame = vec![0u8; 320 * 240 * 4];
-    for px in frame.chunks_exact_mut(4).enumerate().filter(|(i, _)| i % 320 < 160).map(|(_, p)| p) {
+    for px in frame.as_chunks_mut::<4>().0.iter_mut().enumerate().filter(|(i, _)| i % 320 < 160).map(|(_, p)| p) {
         px.copy_from_slice(&[0, 0, 255, 255]);
     }
     for i in 0..5 {

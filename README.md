@@ -45,6 +45,22 @@ See [docs/status.md](docs/status.md) for exactly what each platform supports tod
 | Linux, Windows | CPU | Not yet |
 | Browsers | GPU (WebGL2) | WebCodecs |
 
+## How it compares
+
+| | Skiamovin | [Remotion](https://www.remotion.dev) | [HyperFrames](https://github.com/heygen-com/hyperframes) | [FFrames](https://github.com/dmtrKovalenko/fframes) |
+|---|---|---|---|---|
+| You write | TypeScript: scene nodes or Skia canvas calls | React components | HTML, CSS and JavaScript | Rust, with frames as SVG |
+| Frames are drawn by | Skia, in a native addon or WebAssembly | Headless Chrome, one screenshot per frame | A headless browser | An SVG renderer on the GPU |
+| Encoding | Mediabunny: hardware encoders on macOS, WebCodecs in browsers | FFmpeg | FFmpeg | FFmpeg |
+| Needs a browser to render | No | Yes | Yes | No |
+| Renders and exports inside a web page | Yes | Preview with `@remotion/player` | No | No |
+| License | MIT | Remotion License: free for individuals and teams of up to 3, paid for larger companies | Apache 2.0 | MIT |
+
+Skiamovin is new (version 0.1) and the others are more established. If you want to use web technology you
+already know, Remotion and HyperFrames let you write videos as web pages. Skiamovin is for when you want to draw
+directly with Skia, avoid running a browser on the server, or render and export inside the user's browser.
+This table is based on each project's public docs as of November 2026. Corrections are welcome.
+
 ## Install
 
 ```sh

@@ -1,6 +1,7 @@
 //! WebAssembly build of Skiamovin (emscripten). `generated.rs` is produced by scripts/gen-bindings.mjs.
 #![allow(clippy::missing_safety_doc)]
 
+#[rustfmt::skip]
 mod generated;
 mod rt;
 

@@ -157,10 +157,10 @@ pub fn image_filter_runtime_shader(effect: u32, uniforms: &[u8], child_name: &st
         let bytes = &uniforms[off..off + size];
         let ty = format!("{:?}", u.ty());
         if ty.starts_with("Int") {
-            let v: Vec<i32> = bytes.chunks_exact(4).map(|c| i32::from_le_bytes(c.try_into().unwrap())).collect();
+            let v: Vec<i32> = bytes.as_chunks::<4>().0.iter().map(|c| i32::from_le_bytes(*c)).collect();
             b.set_uniform_int(u.name(), &v).map_err(|e| format!("{e:?}"))?;
         } else {
-            let v: Vec<f32> = bytes.chunks_exact(4).map(|c| f32::from_le_bytes(c.try_into().unwrap())).collect();
+            let v: Vec<f32> = bytes.as_chunks::<4>().0.iter().map(|c| f32::from_le_bytes(*c)).collect();
             b.set_uniform_float(u.name(), &v).map_err(|e| format!("{e:?}"))?;
         }
     }

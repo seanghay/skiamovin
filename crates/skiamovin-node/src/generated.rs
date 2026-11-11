@@ -154,29 +154,8 @@ pub fn canvas_draw_oval(c: u32, l: f64, t: f64, r: f64, b: f64, paint: u32) -> n
 }
 
 #[napi(js_name = "canvas_draw_arc")]
-pub fn canvas_draw_arc(
-    c: u32,
-    l: f64,
-    t: f64,
-    r: f64,
-    b: f64,
-    start: f64,
-    sweep: f64,
-    use_center: bool,
-    paint: u32,
-) -> napi::Result<()> {
-    api::canvas::canvas_draw_arc(
-        c,
-        l as f32,
-        t as f32,
-        r as f32,
-        b as f32,
-        start as f32,
-        sweep as f32,
-        use_center,
-        paint,
-    )
-    .map_err(err)
+pub fn canvas_draw_arc(c: u32, l: f64, t: f64, r: f64, b: f64, start: f64, sweep: f64, use_center: bool, paint: u32) -> napi::Result<()> {
+    api::canvas::canvas_draw_arc(c, l as f32, t as f32, r as f32, b as f32, start as f32, sweep as f32, use_center, paint).map_err(err)
 }
 
 #[napi(js_name = "canvas_draw_line")]
@@ -200,27 +179,12 @@ pub fn canvas_draw_image(c: u32, image: u32, x: f64, y: f64, sampling_code: u32,
 }
 
 #[napi(js_name = "canvas_draw_image_rect")]
-pub fn canvas_draw_image_rect(
-    c: u32,
-    image: u32,
-    src: Float32Array,
-    dst: Float32Array,
-    sampling_code: u32,
-    paint: u32,
-    strict: bool,
-) -> napi::Result<()> {
+pub fn canvas_draw_image_rect(c: u32, image: u32, src: Float32Array, dst: Float32Array, sampling_code: u32, paint: u32, strict: bool) -> napi::Result<()> {
     api::canvas::canvas_draw_image_rect(c, image, &src, &dst, sampling_code, paint, strict).map_err(err)
 }
 
 #[napi(js_name = "canvas_draw_image_nine")]
-pub fn canvas_draw_image_nine(
-    c: u32,
-    image: u32,
-    center: Float32Array,
-    dst: Float32Array,
-    filter_linear: bool,
-    paint: u32,
-) -> napi::Result<()> {
+pub fn canvas_draw_image_nine(c: u32, image: u32, center: Float32Array, dst: Float32Array, filter_linear: bool, paint: u32) -> napi::Result<()> {
     api::canvas::canvas_draw_image_nine(c, image, &center, &dst, filter_linear, paint).map_err(err)
 }
 
@@ -235,15 +199,7 @@ pub fn canvas_draw_text_blob(c: u32, blob: u32, x: f64, y: f64, paint: u32) -> n
 }
 
 #[napi(js_name = "canvas_draw_glyphs_at")]
-pub fn canvas_draw_glyphs_at(
-    c: u32,
-    glyphs: Uint32Array,
-    positions: Float32Array,
-    ox: f64,
-    oy: f64,
-    font: u32,
-    paint: u32,
-) -> napi::Result<()> {
+pub fn canvas_draw_glyphs_at(c: u32, glyphs: Uint32Array, positions: Float32Array, ox: f64, oy: f64, font: u32, paint: u32) -> napi::Result<()> {
     api::canvas::canvas_draw_glyphs_at(c, &glyphs, &positions, ox as f32, oy as f32, font, paint).map_err(err)
 }
 
@@ -253,30 +209,12 @@ pub fn canvas_draw_picture(c: u32, picture: u32, m: Float32Array, paint: u32) ->
 }
 
 #[napi(js_name = "canvas_draw_atlas")]
-pub fn canvas_draw_atlas(
-    c: u32,
-    atlas: u32,
-    xforms: Float32Array,
-    tex: Float32Array,
-    colors: Uint32Array,
-    mode: u32,
-    sampling_code: u32,
-    paint: u32,
-) -> napi::Result<()> {
+pub fn canvas_draw_atlas(c: u32, atlas: u32, xforms: Float32Array, tex: Float32Array, colors: Uint32Array, mode: u32, sampling_code: u32, paint: u32) -> napi::Result<()> {
     api::canvas::canvas_draw_atlas(c, atlas, &xforms, &tex, &colors, mode, sampling_code, paint).map_err(err)
 }
 
 #[napi(js_name = "canvas_draw_vertices")]
-pub fn canvas_draw_vertices(
-    c: u32,
-    mode: u32,
-    positions: Float32Array,
-    tex_coords: Float32Array,
-    colors: Uint32Array,
-    indices: Uint32Array,
-    blend: u32,
-    paint: u32,
-) -> napi::Result<()> {
+pub fn canvas_draw_vertices(c: u32, mode: u32, positions: Float32Array, tex_coords: Float32Array, colors: Uint32Array, indices: Uint32Array, blend: u32, paint: u32) -> napi::Result<()> {
     api::canvas::canvas_draw_vertices(c, mode, &positions, &tex_coords, &colors, &indices, blend, paint).map_err(err)
 }
 
@@ -286,33 +224,13 @@ pub fn image_filter_blur(sx: f64, sy: f64, tile: u32, input_h: u32, crop_rect: F
 }
 
 #[napi(js_name = "image_filter_drop_shadow")]
-pub fn image_filter_drop_shadow(
-    dx: f64,
-    dy: f64,
-    sx: f64,
-    sy: f64,
-    argb: u32,
-    input_h: u32,
-    crop_rect: Float32Array,
-) -> napi::Result<u32> {
-    api::effects::image_filter_drop_shadow(dx as f32, dy as f32, sx as f32, sy as f32, argb, input_h, &crop_rect)
-        .map(|v| v)
-        .map_err(err)
+pub fn image_filter_drop_shadow(dx: f64, dy: f64, sx: f64, sy: f64, argb: u32, input_h: u32, crop_rect: Float32Array) -> napi::Result<u32> {
+    api::effects::image_filter_drop_shadow(dx as f32, dy as f32, sx as f32, sy as f32, argb, input_h, &crop_rect).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "image_filter_drop_shadow_only")]
-pub fn image_filter_drop_shadow_only(
-    dx: f64,
-    dy: f64,
-    sx: f64,
-    sy: f64,
-    argb: u32,
-    input_h: u32,
-    crop_rect: Float32Array,
-) -> napi::Result<u32> {
-    api::effects::image_filter_drop_shadow_only(dx as f32, dy as f32, sx as f32, sy as f32, argb, input_h, &crop_rect)
-        .map(|v| v)
-        .map_err(err)
+pub fn image_filter_drop_shadow_only(dx: f64, dy: f64, sx: f64, sy: f64, argb: u32, input_h: u32, crop_rect: Float32Array) -> napi::Result<u32> {
+    api::effects::image_filter_drop_shadow_only(dx as f32, dy as f32, sx as f32, sy as f32, argb, input_h, &crop_rect).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "image_filter_color_filter")]
@@ -341,17 +259,8 @@ pub fn image_filter_matrix_transform(m: Float32Array, sampling_code: u32, input_
 }
 
 #[napi(js_name = "image_filter_displacement_map")]
-pub fn image_filter_displacement_map(
-    x_channel: u32,
-    y_channel: u32,
-    scale: f64,
-    displacement: u32,
-    color_h: u32,
-    crop_rect: Float32Array,
-) -> napi::Result<u32> {
-    api::effects::image_filter_displacement_map(x_channel, y_channel, scale as f32, displacement, color_h, &crop_rect)
-        .map(|v| v)
-        .map_err(err)
+pub fn image_filter_displacement_map(x_channel: u32, y_channel: u32, scale: f64, displacement: u32, color_h: u32, crop_rect: Float32Array) -> napi::Result<u32> {
+    api::effects::image_filter_displacement_map(x_channel, y_channel, scale as f32, displacement, color_h, &crop_rect).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "image_filter_dilate")]
@@ -380,12 +289,7 @@ pub fn image_filter_blend(mode: u32, background: u32, foreground: u32, crop_rect
 }
 
 #[napi(js_name = "image_filter_runtime_shader")]
-pub fn image_filter_runtime_shader(
-    effect: u32,
-    uniforms: Uint8Array,
-    child_name: String,
-    input_h: u32,
-) -> napi::Result<u32> {
+pub fn image_filter_runtime_shader(effect: u32, uniforms: Uint8Array, child_name: String, input_h: u32) -> napi::Result<u32> {
     api::effects::image_filter_runtime_shader(effect, &uniforms, &child_name, input_h).map(|v| v).map_err(err)
 }
 
@@ -660,28 +564,12 @@ pub fn gpu_context_device_name(h: u32) -> napi::Result<String> {
 }
 
 #[napi(js_name = "gpu_surface_render_target")]
-pub fn gpu_surface_render_target(
-    h: u32,
-    width: i32,
-    height: i32,
-    sample_count: u32,
-    color_type_code: u32,
-    color_space_code: u32,
-) -> napi::Result<u32> {
-    api::gpu::gpu_surface_render_target(h, width, height, sample_count, color_type_code, color_space_code)
-        .map(|v| v)
-        .map_err(err)
+pub fn gpu_surface_render_target(h: u32, width: i32, height: i32, sample_count: u32, color_type_code: u32, color_space_code: u32) -> napi::Result<u32> {
+    api::gpu::gpu_surface_render_target(h, width, height, sample_count, color_type_code, color_space_code).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "gpu_surface_wrap_gl_framebuffer")]
-pub fn gpu_surface_wrap_gl_framebuffer(
-    h: u32,
-    width: i32,
-    height: i32,
-    fbo: u32,
-    samples: u32,
-    stencil: u32,
-) -> napi::Result<u32> {
+pub fn gpu_surface_wrap_gl_framebuffer(h: u32, width: i32, height: i32, fbo: u32, samples: u32, stencil: u32) -> napi::Result<u32> {
     api::gpu::gpu_surface_wrap_gl_framebuffer(h, width, height, fbo, samples, stencil).map(|v| v).map_err(err)
 }
 
@@ -721,18 +609,8 @@ pub fn image_decode(bytes: Uint8Array) -> napi::Result<u32> {
 }
 
 #[napi(js_name = "image_from_pixels")]
-pub fn image_from_pixels(
-    width: i32,
-    height: i32,
-    color_type_code: u32,
-    alpha_type_code: u32,
-    color_space_code: u32,
-    pixels: Uint8Array,
-    row_bytes: u32,
-) -> napi::Result<u32> {
-    api::image::image_from_pixels(width, height, color_type_code, alpha_type_code, color_space_code, &pixels, row_bytes)
-        .map(|v| v)
-        .map_err(err)
+pub fn image_from_pixels(width: i32, height: i32, color_type_code: u32, alpha_type_code: u32, color_space_code: u32, pixels: Uint8Array, row_bytes: u32) -> napi::Result<u32> {
+    api::image::image_from_pixels(width, height, color_type_code, alpha_type_code, color_space_code, &pixels, row_bytes).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "image_width")]
@@ -761,18 +639,8 @@ pub fn image_encode(h: u32, format: u32, quality: u32) -> napi::Result<Uint8Arra
 }
 
 #[napi(js_name = "image_read_pixels")]
-pub fn image_read_pixels(
-    h: u32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    color_type_code: u32,
-    alpha_type_code: u32,
-) -> napi::Result<Uint8Array> {
-    api::image::image_read_pixels(h, x, y, width, height, color_type_code, alpha_type_code)
-        .map(|v| Uint8Array::new(v))
-        .map_err(err)
+pub fn image_read_pixels(h: u32, x: i32, y: i32, width: i32, height: i32, color_type_code: u32, alpha_type_code: u32) -> napi::Result<Uint8Array> {
+    api::image::image_read_pixels(h, x, y, width, height, color_type_code, alpha_type_code).map(|v| Uint8Array::new(v)).map_err(err)
 }
 
 #[napi(js_name = "image_make_shader")]
@@ -1051,18 +919,8 @@ pub fn path_r_line_to(h: u32, dx: f64, dy: f64) -> napi::Result<()> {
 }
 
 #[napi(js_name = "path_arc_to_oval")]
-pub fn path_arc_to_oval(
-    h: u32,
-    l: f64,
-    t: f64,
-    r: f64,
-    b: f64,
-    start: f64,
-    sweep: f64,
-    force_move_to: bool,
-) -> napi::Result<()> {
-    api::path::path_arc_to_oval(h, l as f32, t as f32, r as f32, b as f32, start as f32, sweep as f32, force_move_to)
-        .map_err(err)
+pub fn path_arc_to_oval(h: u32, l: f64, t: f64, r: f64, b: f64, start: f64, sweep: f64, force_move_to: bool) -> napi::Result<()> {
+    api::path::path_arc_to_oval(h, l as f32, t as f32, r as f32, b as f32, start as f32, sweep as f32, force_move_to).map_err(err)
 }
 
 #[napi(js_name = "path_arc_to_tangent")]
@@ -1071,18 +929,8 @@ pub fn path_arc_to_tangent(h: u32, x1: f64, y1: f64, x2: f64, y2: f64, radius: f
 }
 
 #[napi(js_name = "path_arc_to_radius")]
-pub fn path_arc_to_radius(
-    h: u32,
-    rx: f64,
-    ry: f64,
-    x_rotation: f64,
-    large: bool,
-    ccw: bool,
-    x: f64,
-    y: f64,
-) -> napi::Result<()> {
-    api::path::path_arc_to_radius(h, rx as f32, ry as f32, x_rotation as f32, large, ccw, x as f32, y as f32)
-        .map_err(err)
+pub fn path_arc_to_radius(h: u32, rx: f64, ry: f64, x_rotation: f64, large: bool, ccw: bool, x: f64, y: f64) -> napi::Result<()> {
+    api::path::path_arc_to_radius(h, rx as f32, ry as f32, x_rotation as f32, large, ccw, x as f32, y as f32).map_err(err)
 }
 
 #[napi(js_name = "path_close")]
@@ -1266,86 +1114,23 @@ pub fn picture_approximate_op_count(h: u32) -> napi::Result<u32> {
 }
 
 #[napi(js_name = "shader_linear_gradient")]
-pub fn shader_linear_gradient(
-    x0: f64,
-    y0: f64,
-    x1: f64,
-    y1: f64,
-    colors: Float32Array,
-    positions: Float32Array,
-    tile: u32,
-    flags: u32,
-    m: Float32Array,
-) -> napi::Result<u32> {
-    api::shader::shader_linear_gradient(
-        x0 as f32, y0 as f32, x1 as f32, y1 as f32, &colors, &positions, tile, flags, &m,
-    )
-    .map(|v| v)
-    .map_err(err)
+pub fn shader_linear_gradient(x0: f64, y0: f64, x1: f64, y1: f64, colors: Float32Array, positions: Float32Array, tile: u32, flags: u32, m: Float32Array) -> napi::Result<u32> {
+    api::shader::shader_linear_gradient(x0 as f32, y0 as f32, x1 as f32, y1 as f32, &colors, &positions, tile, flags, &m).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "shader_radial_gradient")]
-pub fn shader_radial_gradient(
-    cx: f64,
-    cy: f64,
-    radius: f64,
-    colors: Float32Array,
-    positions: Float32Array,
-    tile: u32,
-    flags: u32,
-    m: Float32Array,
-) -> napi::Result<u32> {
-    api::shader::shader_radial_gradient(cx as f32, cy as f32, radius as f32, &colors, &positions, tile, flags, &m)
-        .map(|v| v)
-        .map_err(err)
+pub fn shader_radial_gradient(cx: f64, cy: f64, radius: f64, colors: Float32Array, positions: Float32Array, tile: u32, flags: u32, m: Float32Array) -> napi::Result<u32> {
+    api::shader::shader_radial_gradient(cx as f32, cy as f32, radius as f32, &colors, &positions, tile, flags, &m).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "shader_two_point_conical_gradient")]
-pub fn shader_two_point_conical_gradient(
-    sx: f64,
-    sy: f64,
-    sr: f64,
-    ex: f64,
-    ey: f64,
-    er: f64,
-    colors: Float32Array,
-    positions: Float32Array,
-    tile: u32,
-    flags: u32,
-    m: Float32Array,
-) -> napi::Result<u32> {
-    api::shader::shader_two_point_conical_gradient(
-        sx as f32, sy as f32, sr as f32, ex as f32, ey as f32, er as f32, &colors, &positions, tile, flags, &m,
-    )
-    .map(|v| v)
-    .map_err(err)
+pub fn shader_two_point_conical_gradient(sx: f64, sy: f64, sr: f64, ex: f64, ey: f64, er: f64, colors: Float32Array, positions: Float32Array, tile: u32, flags: u32, m: Float32Array) -> napi::Result<u32> {
+    api::shader::shader_two_point_conical_gradient(sx as f32, sy as f32, sr as f32, ex as f32, ey as f32, er as f32, &colors, &positions, tile, flags, &m).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "shader_sweep_gradient")]
-pub fn shader_sweep_gradient(
-    cx: f64,
-    cy: f64,
-    colors: Float32Array,
-    positions: Float32Array,
-    tile: u32,
-    start_angle: f64,
-    end_angle: f64,
-    flags: u32,
-    m: Float32Array,
-) -> napi::Result<u32> {
-    api::shader::shader_sweep_gradient(
-        cx as f32,
-        cy as f32,
-        &colors,
-        &positions,
-        tile,
-        start_angle as f32,
-        end_angle as f32,
-        flags,
-        &m,
-    )
-    .map(|v| v)
-    .map_err(err)
+pub fn shader_sweep_gradient(cx: f64, cy: f64, colors: Float32Array, positions: Float32Array, tile: u32, start_angle: f64, end_angle: f64, flags: u32, m: Float32Array) -> napi::Result<u32> {
+    api::shader::shader_sweep_gradient(cx as f32, cy as f32, &colors, &positions, tile, start_angle as f32, end_angle as f32, flags, &m).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "shader_color")]
@@ -1360,9 +1145,7 @@ pub fn shader_blend(mode: u32, dst: u32, src: u32) -> napi::Result<u32> {
 
 #[napi(js_name = "shader_fractal_noise")]
 pub fn shader_fractal_noise(fx: f64, fy: f64, octaves: u32, seed: f64, tile_w: i32, tile_h: i32) -> napi::Result<u32> {
-    api::shader::shader_fractal_noise(fx as f32, fy as f32, octaves, seed as f32, tile_w, tile_h)
-        .map(|v| v)
-        .map_err(err)
+    api::shader::shader_fractal_noise(fx as f32, fy as f32, octaves, seed as f32, tile_w, tile_h).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "shader_turbulence")]
@@ -1401,12 +1184,7 @@ pub fn runtime_effect_uniform_size(h: u32) -> napi::Result<u32> {
 }
 
 #[napi(js_name = "runtime_effect_make_shader")]
-pub fn runtime_effect_make_shader(
-    h: u32,
-    uniforms: Uint8Array,
-    children: Uint32Array,
-    m: Float32Array,
-) -> napi::Result<u32> {
+pub fn runtime_effect_make_shader(h: u32, uniforms: Uint8Array, children: Uint32Array, m: Float32Array) -> napi::Result<u32> {
     api::shader::runtime_effect_make_shader(h, &uniforms, &children, &m).map(|v| v).map_err(err)
 }
 
@@ -1421,16 +1199,8 @@ pub fn runtime_effect_make_blender(h: u32, uniforms: Uint8Array, children: Uint3
 }
 
 #[napi(js_name = "surface_raster")]
-pub fn surface_raster(
-    width: i32,
-    height: i32,
-    color_type_code: u32,
-    alpha_type_code: u32,
-    color_space_code: u32,
-) -> napi::Result<u32> {
-    api::surface::surface_raster(width, height, color_type_code, alpha_type_code, color_space_code)
-        .map(|v| v)
-        .map_err(err)
+pub fn surface_raster(width: i32, height: i32, color_type_code: u32, alpha_type_code: u32, color_space_code: u32) -> napi::Result<u32> {
+    api::surface::surface_raster(width, height, color_type_code, alpha_type_code, color_space_code).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "surface_raster_n32_premul")]
@@ -1474,33 +1244,13 @@ pub fn surface_is_gpu(surface: u32) -> napi::Result<bool> {
 }
 
 #[napi(js_name = "surface_read_pixels")]
-pub fn surface_read_pixels(
-    surface: u32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    color_type_code: u32,
-    alpha_type_code: u32,
-) -> napi::Result<Uint8Array> {
-    api::surface::surface_read_pixels(surface, x, y, width, height, color_type_code, alpha_type_code)
-        .map(|v| Uint8Array::new(v))
-        .map_err(err)
+pub fn surface_read_pixels(surface: u32, x: i32, y: i32, width: i32, height: i32, color_type_code: u32, alpha_type_code: u32) -> napi::Result<Uint8Array> {
+    api::surface::surface_read_pixels(surface, x, y, width, height, color_type_code, alpha_type_code).map(|v| Uint8Array::new(v)).map_err(err)
 }
 
 #[napi(js_name = "surface_write_pixels")]
-pub fn surface_write_pixels(
-    surface: u32,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    color_type_code: u32,
-    alpha_type_code: u32,
-    pixels: Uint8Array,
-) -> napi::Result<()> {
-    api::surface::surface_write_pixels(surface, x, y, width, height, color_type_code, alpha_type_code, &pixels)
-        .map_err(err)
+pub fn surface_write_pixels(surface: u32, x: i32, y: i32, width: i32, height: i32, color_type_code: u32, alpha_type_code: u32, pixels: Uint8Array) -> napi::Result<()> {
+    api::surface::surface_write_pixels(surface, x, y, width, height, color_type_code, alpha_type_code, &pixels).map_err(err)
 }
 
 #[napi(js_name = "surface_encode")]
@@ -1839,25 +1589,8 @@ pub fn paragraph_style_set_apply_rounding_hack(h: u32, v: bool) -> napi::Result<
 }
 
 #[napi(js_name = "paragraph_style_set_strut")]
-pub fn paragraph_style_set_strut(
-    h: u32,
-    enabled: bool,
-    families: String,
-    font_size: f64,
-    height: f64,
-    leading: f64,
-    force: bool,
-) -> napi::Result<()> {
-    api::textlayout::paragraph_style_set_strut(
-        h,
-        enabled,
-        &families,
-        font_size as f32,
-        height as f32,
-        leading as f32,
-        force,
-    )
-    .map_err(err)
+pub fn paragraph_style_set_strut(h: u32, enabled: bool, families: String, font_size: f64, height: f64, leading: f64, force: bool) -> napi::Result<()> {
+    api::textlayout::paragraph_style_set_strut(h, enabled, &families, font_size as f32, height as f32, leading as f32, force).map_err(err)
 }
 
 #[napi(js_name = "paragraph_builder_new")]
@@ -1881,23 +1614,8 @@ pub fn paragraph_builder_add_text(h: u32, text: String) -> napi::Result<()> {
 }
 
 #[napi(js_name = "paragraph_builder_add_placeholder")]
-pub fn paragraph_builder_add_placeholder(
-    h: u32,
-    width: f64,
-    height: f64,
-    alignment: u32,
-    baseline: u32,
-    offset: f64,
-) -> napi::Result<()> {
-    api::textlayout::paragraph_builder_add_placeholder(
-        h,
-        width as f32,
-        height as f32,
-        alignment,
-        baseline,
-        offset as f32,
-    )
-    .map_err(err)
+pub fn paragraph_builder_add_placeholder(h: u32, width: f64, height: f64, alignment: u32, baseline: u32, offset: f64) -> napi::Result<()> {
+    api::textlayout::paragraph_builder_add_placeholder(h, width as f32, height as f32, alignment, baseline, offset as f32).map_err(err)
 }
 
 #[napi(js_name = "paragraph_builder_build")]
@@ -1931,16 +1649,8 @@ pub fn paragraph_line_metrics(h: u32) -> napi::Result<Float32Array> {
 }
 
 #[napi(js_name = "paragraph_rects_for_range")]
-pub fn paragraph_rects_for_range(
-    h: u32,
-    start: u32,
-    end: u32,
-    h_style: u32,
-    w_style: u32,
-) -> napi::Result<Float32Array> {
-    api::textlayout::paragraph_rects_for_range(h, start, end, h_style, w_style)
-        .map(|v| Float32Array::new(v))
-        .map_err(err)
+pub fn paragraph_rects_for_range(h: u32, start: u32, end: u32, h_style: u32, w_style: u32) -> napi::Result<Float32Array> {
+    api::textlayout::paragraph_rects_for_range(h, start, end, h_style, w_style).map(|v| Float32Array::new(v)).map_err(err)
 }
 
 #[napi(js_name = "paragraph_rects_for_placeholders")]
@@ -1950,9 +1660,7 @@ pub fn paragraph_rects_for_placeholders(h: u32) -> napi::Result<Float32Array> {
 
 #[napi(js_name = "paragraph_glyph_position_at_coordinate")]
 pub fn paragraph_glyph_position_at_coordinate(h: u32, x: f64, y: f64) -> napi::Result<Int32Array> {
-    api::textlayout::paragraph_glyph_position_at_coordinate(h, x as f32, y as f32)
-        .map(|v| Int32Array::new(v))
-        .map_err(err)
+    api::textlayout::paragraph_glyph_position_at_coordinate(h, x as f32, y as f32).map(|v| Int32Array::new(v)).map_err(err)
 }
 
 #[napi(js_name = "paragraph_word_boundary")]

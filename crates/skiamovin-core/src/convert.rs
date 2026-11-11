@@ -69,7 +69,7 @@ pub fn m44_to_vec(m: &M44) -> Vec<f32> {
 }
 
 pub fn points(v: &[f32]) -> Vec<Point> {
-    v.chunks_exact(2).map(|c| Point::new(c[0], c[1])).collect()
+    v.as_chunks::<2>().0.iter().map(|c| Point::new(c[0], c[1])).collect()
 }
 
 pub fn color4f(v: &[f32]) -> R<Color4f> {
@@ -81,7 +81,7 @@ pub fn color4f(v: &[f32]) -> R<Color4f> {
 
 /// Flat `[r, g, b, a, r, g, b, a, ...]`.
 pub fn colors4f(v: &[f32]) -> Vec<Color4f> {
-    v.chunks_exact(4).map(|c| Color4f::new(c[0], c[1], c[2], c[3])).collect()
+    v.as_chunks::<4>().0.iter().map(|c| Color4f::new(c[0], c[1], c[2], c[3])).collect()
 }
 
 pub fn color(c: u32) -> Color {

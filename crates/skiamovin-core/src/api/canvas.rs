@@ -418,8 +418,8 @@ pub fn canvas_draw_atlas(
 ) -> R<()> {
     let img = cloned::<Image>(atlas)?;
     let xf: Vec<skia_safe::RSXform> =
-        xforms.chunks_exact(4).map(|v| skia_safe::RSXform::new(v[0], v[1], (v[2], v[3]))).collect();
-    let tr: Vec<skia_safe::Rect> = tex.chunks_exact(4).map(|v| rect(v[0], v[1], v[2], v[3])).collect();
+        xforms.as_chunks::<4>().0.iter().map(|v| skia_safe::RSXform::new(v[0], v[1], (v[2], v[3]))).collect();
+    let tr: Vec<skia_safe::Rect> = tex.as_chunks::<4>().0.iter().map(|v| rect(v[0], v[1], v[2], v[3])).collect();
     let cols: Vec<skia_safe::Color> = colors.iter().map(|c| color(*c)).collect();
     let p = paint_opt(paint)?;
     with_canvas(c, |cv| {

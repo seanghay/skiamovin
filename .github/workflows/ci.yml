@@ -121,7 +121,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: native
-      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - name: Install ffmpeg
+        run: brew install ffmpeg
       - uses: actions/download-artifact@v5
         with:
           name: wasm
