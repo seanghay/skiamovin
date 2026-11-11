@@ -749,6 +749,27 @@ function, or stagger options with `each`. `repeat: -1` repeats forever. Values m
 (interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their `set` value, or to `0`
 (`1` for `opacity` and `scale`).
 
+### 3D space: `space3d`
+
+```ts
+space3d({ width: 1920, height: 1080 }, { tilt: cameraAngles.high, pan: t * 20 }, [
+  { node: front, rotateY: t * 180, backface: 'hidden' },
+  { node: back, rotateY: t * 180 + 180, backface: 'hidden' },
+]);
+```
+
+Flat nodes (cards, images, text) placed in 3D and seen through one perspective camera. Each item is a node with a
+fixed `size`, placed by its center (`x`, `y`, `z`, with y down and z toward the camera), turned with `rotateX`,
+`rotateY` and `rotateZ`, and scaled with `scale`. Items are drawn back to front, keeping their order at equal
+depth; `backface: 'hidden'` hides an item whose back faces the camera. Things behind the camera are left out.
+
+The camera has `fov` (default 40 degrees), `tilt` (looking down, positive, or up), `pan`, `roll`, `target` and
+`distance`. By default the plane z = 0 appears at its true size. `cameraAngles` has film's angle presets:
+`overhead`, `high`, `eyeLevel`, `low` and `undershot`. Sorting is by each item's center, so large items that cross
+each other can overlap wrongly.
+
+Any node also accepts `transform: { matrix }`, a 4×4 row-major matrix applied as is.
+
 ### `scatter` and `lookAt`
 
 ```ts

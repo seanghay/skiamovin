@@ -84,6 +84,8 @@ export interface Transform {
   perspective?: number;
   rotateX?: number;
   rotateY?: number;
+  /** A 4×4 matrix, row-major, applied as is: for 3D placement (see `space3d`). */
+  matrix?: readonly number[];
 }
 
 export interface Gradient {

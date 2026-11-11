@@ -141,6 +141,8 @@ export type { ScatterOptions, ScatterPoint } from './scatter.ts';
 export { lookAt, scatter } from './scatter.ts';
 export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from './simulation.ts';
 export { PhysicsWorld, physics } from './simulation.ts';
+export type { Camera3D, Item3D } from './space3d.ts';
+export { cameraAngles, space3d } from './space3d.ts';
 export type { StatesOptions } from './states.ts';
 export { states } from './states.ts';
 export type { StrokeOptions } from './stroke.ts';

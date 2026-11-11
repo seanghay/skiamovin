@@ -1462,6 +1462,7 @@ export class FrameRenderer {
         if (t.rotateY) m = m.concat(M44.rotate([0, 1, 0], (t.rotateY * Math.PI) / 180));
         canvas.concat44(m);
       }
+      if (t.matrix) canvas.concat44(new M44(t.matrix));
       if (t.rotate) canvas.rotate(t.rotate);
       if (t.scale !== undefined)
         canvas.scale(typeof t.scale === 'number' ? [t.scale, t.scale] : [t.scale[0], t.scale[1]]);

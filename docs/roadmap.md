@@ -263,8 +263,9 @@ From Procreate and Procreate Dreams:
 [three.js](https://threejs.org) is a full real-time 3D engine. The Rust crate `three` on docs.rs is an older
 project inspired by it and is no longer maintained, so we won't depend on it. We'll grow 3D in steps:
 
-1. **Shapes in 3D space.** Cards, images and text placed with full 3D transforms and a shared camera (Skia
-   already supports this with `M44`), sorted back to front with a stable tie-break. Camera angle presets apply.
+1. **Shapes in 3D space** (done, as `space3d()`). Cards, images and text placed with full 3D transforms and a
+   shared camera (Skia already supports this with `M44`), sorted back to front with a stable tie-break. Camera
+   angle presets apply.
 2. **Simple meshes.** Boxes, spheres, extruded paths and extruded text, drawn with Skia's `drawVertices` and
    basic lighting. Textured meshes are subdivided so perspective looks right.
 3. **Shader scenes.** Ray-marched scenes in SkSL with a helper library for shapes, lights and materials, as in
