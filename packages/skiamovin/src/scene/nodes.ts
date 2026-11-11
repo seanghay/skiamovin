@@ -2,7 +2,15 @@
 import type { Input, InputAudioTrack, InputVideoTrack } from 'mediabunny';
 import type { Color } from '../core/color.ts';
 import type { BlendMode } from '../core/enums.ts';
-import type { Canvas, ColorFilter, Image, ImageFilter, RuntimeEffect, Shader } from '../core/skia.ts';
+import {
+  type Canvas,
+  type ColorFilter,
+  type Image,
+  type ImageFilter,
+  Path,
+  type RuntimeEffect,
+  type Shader,
+} from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 
@@ -138,6 +146,7 @@ interface Base {
 
 export type SceneNode =
   | ({ type: 'box' } & Base)
+  | ({ type: 'path'; path: Path } & PathStyle & Base)
   | ({ type: 'text'; content: (string | Span)[]; text: TextProps } & Base)
   | ({
       type: 'image';
@@ -364,6 +373,67 @@ export function draw(
   style: NodeStyle = {},
 ): SceneNode {
   return { type: 'draw', fn, ctx: currentScope().ctx, style, children: [] };
+}
+
+export interface PathStyle {
+  /** Fill color or gradient. Defaults to black when there's no stroke, like SVG, and to none when there is. */
+  fill?: Color | Gradient | null;
+  stroke?: Color | Gradient;
+  /** Default 1. */
+  strokeWidth?: number;
+  strokeCap?: 'butt' | 'round' | 'square';
+  strokeJoin?: 'miter' | 'round' | 'bevel';
+  /**
+   * Draws only part of the path, as fractions of its total length: `{ end: progress }` draws it on.
+   * `offset` moves the drawn part along the path.
+   */
+  trim?: { start?: number; end?: number; offset?: number };
+  /** Arrowheads at the ends of the (trimmed) path. `true` sizes them from the stroke width. */
+  arrow?: { start?: boolean | number; end?: boolean | number };
+}
+
+const parsedPaths = new Map<string, Path>();
+
+/** Parses SVG path data once and reuses it. */
+export function pathFromSVG(d: string): Path {
+  let p = parsedPaths.get(d);
+  if (!p) {
+    const parsed = Path.fromSVG(d);
+    if (!parsed) throw new SyntaxError(`path: invalid SVG path data '${d.slice(0, 40)}'`);
+    p = parsed;
+    if (parsedPaths.size > 500) {
+      const oldest = parsedPaths.keys().next().value!;
+      parsedPaths.delete(oldest);
+    }
+    parsedPaths.set(d, p);
+  }
+  return p;
+}
+
+/**
+ * A vector path, from SVG path data or a `Path`. Its coordinates are in the node's own space; the node's size
+ * defaults to the right and bottom edges of the path.
+ */
+export function path(d: string | Path, style: NodeStyle & PathStyle = {}): SceneNode {
+  const p = typeof d === 'string' ? pathFromSVG(d) : d;
+  const { fill, stroke, strokeWidth, strokeCap, strokeJoin, trim, arrow, ...rest } = style;
+  if (!rest.size) {
+    const b = p.computeTightBounds();
+    rest.size = { width: Math.max(0, b.right), height: Math.max(0, b.bottom) };
+  }
+  return {
+    type: 'path',
+    path: p,
+    fill,
+    stroke,
+    strokeWidth,
+    strokeCap,
+    strokeJoin,
+    trim,
+    arrow,
+    style: rest,
+    children: [],
+  };
 }
 
 /** Shows content during `[start, end)` seconds with local time. */

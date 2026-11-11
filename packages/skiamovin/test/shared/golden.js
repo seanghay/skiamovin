@@ -7,6 +7,8 @@ import {
   CompositionSink,
   interpolate,
   linearGradient,
+  morphPath,
+  path,
   radialGradient,
   shader,
   spring,
@@ -72,6 +74,31 @@ export function goldenScenes(font) {
             },
             [text('Golden frames 123', { fontFamily: 'Arial', fontSize: 22 + timestamp * 4, color: '#111827' })],
           ),
+      }),
+    },
+    {
+      name: 'paths',
+      times: [0.25, 1],
+      comp: new Composition({
+        ...base,
+        render: ({ timestamp }) =>
+          box({ size: { width: '100%', height: '100%' }, background: '#111827' }, [
+            path('M10 20 C60 -10 100 120 150 60 S220 10 240 100', {
+              stroke: '#38bdf8',
+              strokeWidth: 3,
+              strokeCap: 'round',
+              trim: { end: timestamp / 1.5 },
+              arrow: { end: true },
+            }),
+            box({ position: 'absolute', inset: { left: 150, top: 40 } }, [
+              path(
+                morphPath('M30 0 A30 30 0 1 1 30 60 A30 30 0 1 1 30 0 Z', 'M0 0 L60 0 L60 60 L0 60 Z', timestamp / 2),
+                {
+                  fill: '#f472b6',
+                },
+              ),
+            ]),
+          ]),
       }),
     },
     {

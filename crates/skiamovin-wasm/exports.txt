@@ -212,6 +212,11 @@ _skm_contour_measure_length
 _skm_contour_measure_is_closed
 _skm_contour_measure_pos_tan
 _skm_contour_measure_segment
+_skm_path_trim
+_skm_path_pos_tan_at
+_skm_path_total_length
+_skm_path_morph_new
+_skm_path_morph_at
 _skm_picture_recorder_new
 _skm_picture_recorder_begin
 _skm_picture_recorder_finish

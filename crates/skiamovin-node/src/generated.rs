@@ -1078,6 +1078,31 @@ pub fn contour_measure_segment(h: u32, start: f64, stop: f64, start_with_move_to
     api::path::contour_measure_segment(h, start as f32, stop as f32, start_with_move_to).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "path_trim")]
+pub fn path_trim(h: u32, start: f64, end: f64, offset: f64) -> napi::Result<u32> {
+    api::path_motion::path_trim(h, start as f32, end as f32, offset as f32).map(|v| v).map_err(err)
+}
+
+#[napi(js_name = "path_pos_tan_at")]
+pub fn path_pos_tan_at(h: u32, fraction: f64) -> napi::Result<Float32Array> {
+    api::path_motion::path_pos_tan_at(h, fraction as f32).map(|v| Float32Array::new(v)).map_err(err)
+}
+
+#[napi(js_name = "path_total_length")]
+pub fn path_total_length(h: u32) -> napi::Result<f64> {
+    api::path_motion::path_total_length(h).map(|v| (v) as f64).map_err(err)
+}
+
+#[napi(js_name = "path_morph_new")]
+pub fn path_morph_new(a: u32, b: u32) -> napi::Result<u32> {
+    api::path_motion::path_morph_new(a, b).map(|v| v).map_err(err)
+}
+
+#[napi(js_name = "path_morph_at")]
+pub fn path_morph_at(h: u32, t: f64) -> napi::Result<u32> {
+    api::path_motion::path_morph_at(h, t as f32).map(|v| v).map_err(err)
+}
+
 #[napi(js_name = "picture_recorder_new")]
 pub fn picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()

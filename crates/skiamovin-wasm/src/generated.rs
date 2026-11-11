@@ -1679,6 +1679,46 @@ pub extern "C" fn skm_contour_measure_segment(h: u32, start: f32, stop: f32, sta
 }
 
 #[no_mangle]
+pub extern "C" fn skm_path_trim(h: u32, start: f32, end: f32, offset: f32) -> u32 {
+    match api::path_motion::path_trim(h, start, end, offset) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_path_pos_tan_at(h: u32, fraction: f32) -> *const u8 {
+    match api::path_motion::path_pos_tan_at(h, fraction) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_path_total_length(h: u32) -> f32 {
+    match api::path_motion::path_total_length(h) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0.0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_path_morph_new(a: u32, b: u32) -> u32 {
+    match api::path_motion::path_morph_new(a, b) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_path_morph_at(h: u32, t: f32) -> u32 {
+    match api::path_motion::path_morph_at(h, t) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()
 }

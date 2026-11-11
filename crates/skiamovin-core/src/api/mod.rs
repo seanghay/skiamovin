@@ -11,6 +11,7 @@ pub mod manual;
 pub mod misc;
 pub mod paint;
 pub mod path;
+pub mod path_motion;
 pub mod picture;
 pub mod shader;
 pub mod surface;

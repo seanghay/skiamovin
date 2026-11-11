@@ -1,7 +1,17 @@
 // Renders a composition frame: builds the node tree, lays it out with Taffy, and draws it with Skia.
 import { type Input, type InputVideoTrack, type VideoSample, VideoSampleSink } from 'mediabunny';
 import { type Color, toColor4f, toColorInt } from '../core/color.ts';
-import { BLEND_MODE_NAMES, BlendMode, BlurStyle, ColorSpace, ColorType, PaintStyle, TileMode } from '../core/enums.ts';
+import {
+  BLEND_MODE_NAMES,
+  BlendMode,
+  BlurStyle,
+  ColorSpace,
+  ColorType,
+  PaintStyle,
+  StrokeCap,
+  StrokeJoin,
+  TileMode,
+} from '../core/enums.ts';
 import { M44, Matrix, Rect, RRect } from '../core/geometry.ts';
 import { _sharedGlCanvas, type DirectContext, gpu } from '../core/gpu.ts';
 import {
@@ -12,6 +22,7 @@ import {
   imageFilters,
   maskFilters,
   Paint,
+  Path,
   type Picture,
   PictureRecorder,
   RuntimeEffect,
@@ -816,6 +827,10 @@ export class FrameRenderer {
     const { width: w, height: h } = b;
     const [il, it, ir, _ib] = b.inset;
     switch (n.type) {
+      case 'path': {
+        this.#drawPath(canvas, n, w, h);
+        break;
+      }
       case 'text': {
         const p = this.#paragraphFor(n);
         p.layout(Math.max(0, w - il - ir));
@@ -944,6 +959,65 @@ export class FrameRenderer {
       r,
       v.map((x) => Math.max(0, Math.min(max, x))),
     );
+  }
+
+  #drawPath(canvas: Canvas, n: Extract<SceneNode, { type: 'path' }>, w: number, h: number): void {
+    const trim = n.trim;
+    const trimmed =
+      trim && (trim.start !== undefined || trim.end !== undefined || trim.offset !== undefined)
+        ? n.path.trim(trim.start ?? 0, trim.end ?? 1, trim.offset ?? 0)
+        : null;
+    const shape = trimmed ?? n.path;
+    const paintWith = (source: Color | Gradient, style: PaintStyle) => {
+      const p = this.#paint.reset().setAntiAlias(true).setStyle(style);
+      let tmp: Shader | null = null;
+      if (typeof source === 'object' && source !== null && '__gradient' in source) {
+        tmp = this.#gradient(source as Gradient, w, h);
+        p.setShader(tmp);
+      } else p.setColor(source as Color);
+      return { p, tmp };
+    };
+    const fill = n.fill === undefined ? (n.stroke === undefined ? '#000000' : null) : n.fill;
+    if (fill !== null) {
+      const { p, tmp } = paintWith(fill, PaintStyle.Fill);
+      canvas.drawPath(shape, p);
+      p.setShader(null);
+      tmp?.delete();
+    }
+    if (n.stroke !== undefined) {
+      const sw = n.strokeWidth ?? 1;
+      const { p, tmp } = paintWith(n.stroke, PaintStyle.Stroke);
+      p.setStrokeWidth(sw);
+      p.setStrokeCap({ butt: StrokeCap.Butt, round: StrokeCap.Round, square: StrokeCap.Square }[n.strokeCap ?? 'butt']);
+      p.setStrokeJoin(
+        { miter: StrokeJoin.Miter, round: StrokeJoin.Round, bevel: StrokeJoin.Bevel }[n.strokeJoin ?? 'miter'],
+      );
+      canvas.drawPath(shape, p);
+      // Arrowheads point along the path at its (trimmed) ends.
+      for (const end of ['start', 'end'] as const) {
+        const a = n.arrow?.[end];
+        if (!a) continue;
+        const v = shape.posTanAt(end === 'end' ? 1 : 0);
+        if (!v) continue;
+        const size = typeof a === 'number' ? a : sw * 4;
+        const dir = end === 'end' ? 1 : -1;
+        const [x, y] = [v[0], v[1]];
+        const len = Math.hypot(v[2], v[3]) || 1;
+        const [tx, ty] = [(v[2] / len) * dir, (v[3] / len) * dir];
+        const head = new Path()
+          .moveTo([x + tx * size * 0.5, y + ty * size * 0.5])
+          .lineTo([x - tx * size * 0.5 - ty * size * 0.5, y - ty * size * 0.5 + tx * size * 0.5])
+          .lineTo([x - tx * size * 0.5 + ty * size * 0.5, y - ty * size * 0.5 - tx * size * 0.5])
+          .close();
+        p.setStyle(PaintStyle.Fill);
+        canvas.drawPath(head, p);
+        p.setStyle(PaintStyle.Stroke);
+        head.delete();
+      }
+      p.setShader(null);
+      tmp?.delete();
+    }
+    trimmed?.delete();
   }
 
   #gradient(g: Gradient, w: number, h: number): Shader | null {

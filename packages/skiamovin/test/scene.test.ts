@@ -15,6 +15,7 @@ import {
 } from 'mediabunny';
 import { AlphaType, ColorType, EncodedImageFormat, type Image, ImageInfo, surfaces } from 'skiamovin';
 import {
+  alongPath,
   audio,
   box,
   Composition,
@@ -26,6 +27,8 @@ import {
   image,
   interpolate,
   linearGradient,
+  morphPath,
+  path,
   Render,
   SvgAsset,
   sequence,
@@ -365,4 +368,59 @@ test('CompositionAudioSink mixes and limits', async () => {
   assert.equal(frames, 96000);
   assert.ok(peak <= 1 && peak > 0.9, `limited peak ${peak}`);
   tone.dispose();
+});
+
+test('path node: fill, stroke, trim, arrowheads; morphPath and alongPath', async () => {
+  // Square (0,0)-(100,100), drawn as a stroke and trimmed to its first half: the top and right edges.
+  const square = 'M0 0 L100 0 L100 100 L0 100 Z';
+  const comp = new Composition({
+    width: 120,
+    height: 120,
+    frameRate: 30,
+    duration: 1,
+    background: '#000000',
+    render: () =>
+      box({ size: { width: '100%', height: '100%' }, padding: 10 }, [
+        path(square, { stroke: '#ffffff', strokeWidth: 4, trim: { end: 0.5 }, arrow: { end: 10 } }),
+      ]),
+  });
+  const sink = new CompositionSink(comp, { gpu: 'raster' });
+  const img = (await sink.getImage(0))!.image;
+  assert.ok(pixel(img, 60, 10)[0]! > 200, 'top edge drawn');
+  assert.ok(pixel(img, 110, 60)[0]! > 200, 'right edge drawn');
+  assert.ok(pixel(img, 60, 110)[0]! < 50, 'bottom edge not drawn');
+  assert.ok(pixel(img, 10, 60)[0]! < 50, 'left edge not drawn');
+  await sink.dispose();
+
+  // Filled by default when there is no stroke.
+  const filled = new Composition({
+    width: 40,
+    height: 40,
+    frameRate: 30,
+    duration: 1,
+    background: '#ffffff',
+    render: () => path('M5 5 L35 5 L35 35 L5 35 Z'),
+  });
+  const fs = new CompositionSink(filled, { gpu: 'raster' });
+  assert.deepEqual(pixel((await fs.getImage(0))!.image, 20, 20).slice(0, 3), [0, 0, 0]);
+  await fs.dispose();
+
+  // Morph a circle into a square: endpoints match, and a midpoint has the same number of points as the ends.
+  const circle = 'M50 0 A50 50 0 1 1 50 100 A50 50 0 1 1 50 0 Z';
+  const a = morphPath(circle, square, 0);
+  const b = morphPath(circle, square, 1);
+  const mid = morphPath(circle, square, 0.5);
+  assert.equal(a.countPoints(), b.countPoints());
+  assert.equal(mid.countPoints(), a.countPoints());
+  const bb = b.computeTightBounds();
+  assert.deepEqual([bb.left, bb.top, bb.right, bb.bottom].map(Math.round), [0, 0, 100, 100]);
+  // The square's corners end up near the circle's matching points, so the morph doesn't twist: the morph's
+  // area stays close to both shapes rather than collapsing.
+  const mb = mid.computeTightBounds();
+  assert.ok(mb.right - mb.left > 90 && mb.bottom - mb.top > 90, `mid bounds ${JSON.stringify(mb)}`);
+
+  const p = alongPath('M0 0 L100 0 L100 100', 0.75);
+  assert.ok(Math.abs(p.x - 100) < 1e-3 && Math.abs(p.y - 50) < 1e-3, JSON.stringify(p));
+  assert.ok(Math.abs(p.angle - 90) < 1e-3);
+  assert.ok(Math.abs(alongPath('M0 0 L100 0', 0.5).angle) < 1e-6);
 });

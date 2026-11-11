@@ -217,6 +217,11 @@ export interface GeneratedBinding {
   contour_measure_is_closed(h: number): boolean;
   contour_measure_pos_tan(h: number, distance: number): Float32Array;
   contour_measure_segment(h: number, start: number, stop: number, start_with_move_to: boolean): number;
+  path_trim(h: number, start: number, end: number, offset: number): number;
+  path_pos_tan_at(h: number, fraction: number): Float32Array;
+  path_total_length(h: number): number;
+  path_morph_new(a: number, b: number): number;
+  path_morph_at(h: number, t: number): number;
   picture_recorder_new(): number;
   picture_recorder_begin(h: number, l: number, t: number, r: number, b: number): number;
   picture_recorder_finish(h: number): number;
@@ -562,6 +567,11 @@ export const SIGNATURES: Record<string, string> = {
   contour_measure_is_closed: 'u:b',
   contour_measure_pos_tan: 'uf:F',
   contour_measure_segment: 'uffb:u',
+  path_trim: 'ufff:u',
+  path_pos_tan_at: 'uf:F',
+  path_total_length: 'u:f',
+  path_morph_new: 'uu:u',
+  path_morph_at: 'uf:u',
   picture_recorder_new: ':u',
   picture_recorder_begin: 'uffff:u',
   picture_recorder_finish: 'u:u',

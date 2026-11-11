@@ -76,6 +76,7 @@ export {
   Paint,
   Path,
   PathEffect,
+  PathMorph,
   PdfDocument,
   Picture,
   PictureRecorder,

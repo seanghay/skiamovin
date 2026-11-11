@@ -33,6 +33,7 @@ export type {
   Fit,
   Gradient,
   NodeStyle,
+  PathStyle,
   RenderContext,
   SceneNode,
   Shadow,
@@ -49,6 +50,7 @@ export {
   image,
   linearGradient,
   lottie,
+  path,
   radialGradient,
   sequence,
   series,
@@ -58,6 +60,7 @@ export {
   text,
   video,
 } from './nodes.ts';
+export { alongPath, morphPath } from './paths.ts';
 export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';

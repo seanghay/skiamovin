@@ -597,6 +597,22 @@ export class Path extends SkObject {
   toSVGString(): string {
     return N().path_to_svg(this.handle);
   }
+  /**
+   * The part between `start` and `end`, as fractions of the total length of all contours. `offset` shifts both
+   * and wraps around, so a fixed-length piece can travel along the path.
+   */
+  trim(start: number, end: number, offset = 0): Path {
+    return Path._wrap(N().path_trim(this.handle, start, end, offset));
+  }
+  /** `[x, y, tangentX, tangentY]` at `fraction` of the total length, or null for an empty path. */
+  posTanAt(fraction: number): [number, number, number, number] | null {
+    const v = N().path_pos_tan_at(this.handle, fraction);
+    return v.length ? [v[0]!, v[1]!, v[2]!, v[3]!] : null;
+  }
+  /** Total length of all contours. */
+  totalLength(): number {
+    return N().path_total_length(this.handle);
+  }
   reset(): this {
     N().path_reset(this.handle);
     return this;
@@ -737,6 +753,20 @@ export class Path extends SkObject {
       m.delete();
     }
     return total;
+  }
+}
+
+/**
+ * A prepared morph between two paths. Matching the paths happens once, here; `at(t)` is cheap, so build one
+ * morph and call `at` every frame.
+ */
+export class PathMorph extends SkObject {
+  constructor(from: Path, to: Path) {
+    super(N().path_morph_new(from.handle, to.handle));
+  }
+  /** The shape at `t`: 0 is `from`, 1 is `to`. */
+  at(t: number): Path {
+    return Path._wrap(N().path_morph_at(this.handle, t));
   }
 }
 
