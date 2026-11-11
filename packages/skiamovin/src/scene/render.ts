@@ -23,6 +23,7 @@ import type { WrappedImage } from '../media/index.ts';
 import { importNode } from '../native/node-import.ts';
 import { AudioMixer, buildSchedule } from './audio.ts';
 import { type Composition, CompositionModule } from './composition.ts';
+import { LoudnessMeter, loudnessGain } from './loudness.ts';
 
 import { type ChunkJob, DEFAULT_VIDEO_QUALITY, frameSample } from './render-chunk.ts';
 import { FrameRenderer, type GpuChoice } from './renderer.ts';
@@ -52,6 +53,12 @@ export interface RenderOptions<Props> {
     sampleRate?: number;
     numberOfChannels?: number;
     forceTrack?: boolean;
+    /**
+     * Normalizes the mix to this integrated loudness in LUFS, such as −14 for YouTube or −23 for broadcast (EBU
+     * R128). The whole mix is measured first, then one gain is applied, lowered if needed to keep sample peaks at or
+     * below −1 dBFS.
+     */
+    loudness?: number;
   };
   trim?: { start?: number; end?: number };
   gpu?: GpuChoice;
@@ -67,6 +74,34 @@ export interface RenderOptions<Props> {
 }
 
 export type DiscardReason = 'discarded_by_user' | 'no_encodable_target_codec' | 'nothing_audible';
+
+/** Mixes the whole range once to measure it, and returns the gain that reaches `target` LUFS. */
+async function measureGain(
+  schedule: ReturnType<typeof buildSchedule>,
+  sampleRate: number,
+  channels: number,
+  start: number,
+  duration: number,
+  target: number,
+): Promise<number> {
+  const mixer = new AudioMixer(schedule, sampleRate, channels);
+  const meter = new LoudnessMeter(sampleRate, channels);
+  try {
+    for (let t = 0; t < duration; t += 1) {
+      const n = Math.round(Math.min(1, duration - t) * sampleRate);
+      if (n <= 0) break;
+      meter.add(await mixer.mix(start + t, n));
+    }
+  } finally {
+    await mixer.dispose();
+  }
+  return loudnessGain(meter.integrated(), meter.peak, target);
+}
+
+function gained(data: Float32Array, gain: number): Float32Array {
+  if (gain !== 1) for (let i = 0; i < data.length; i++) data[i]! *= gain;
+  return data;
+}
 
 async function resolveComposition<P>(c: Composition<P> | CompositionModule): Promise<Composition<P>> {
   return c instanceof CompositionModule ? ((await c.load()) as Composition<P>) : c;
@@ -105,6 +140,7 @@ export class Render<Props = any> {
   #videoCodec: VideoCodec | null = null;
   #audioCodec: AudioCodec | null = null;
   #mixer: AudioMixer | null = null;
+  #gain = 1;
   #start = 0;
   #end = 0;
   #canceled = false;
@@ -210,7 +246,18 @@ export class Render<Props = any> {
           { sampleRate, numberOfChannels },
         );
         if (!this.#audioCodec) this.discardedTracks.push({ type: 'audio', reason: 'no_encodable_target_codec' });
-        else this.#mixer = new AudioMixer(schedule, sampleRate, numberOfChannels);
+        else {
+          this.#mixer = new AudioMixer(schedule, sampleRate, numberOfChannels);
+          if (o.audio?.loudness !== undefined)
+            this.#gain = await measureGain(
+              schedule,
+              sampleRate,
+              numberOfChannels,
+              this.#start,
+              this.duration,
+              o.audio.loudness,
+            );
+        }
       }
     }
   }
@@ -255,7 +302,7 @@ export class Render<Props = any> {
       while (audioT < until && !this.#canceled) {
         const n = Math.round(Math.min(AUDIO_CHUNK, this.duration - audioT) * sr);
         if (n <= 0) break;
-        const data = await this.#mixer.mix(this.#start + audioT, n);
+        const data = gained(await this.#mixer.mix(this.#start + audioT, n), this.#gain);
         const s = new AudioSample({
           data,
           format: 'f32',
@@ -394,7 +441,7 @@ export class Render<Props = any> {
         for (let t = 0; t < this.duration - 1e-9 && !this.#canceled; ) {
           const n = Math.round(Math.min(AUDIO_CHUNK, this.duration - t) * sr);
           const s = new AudioSample({
-            data: await this.#mixer.mix(this.#start + t, n),
+            data: gained(await this.#mixer.mix(this.#start + t, n), this.#gain),
             format: 'f32',
             numberOfChannels: this.#mixer.numberOfChannels,
             sampleRate: sr,

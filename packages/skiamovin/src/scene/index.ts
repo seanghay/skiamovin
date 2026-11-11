@@ -58,6 +58,7 @@ export {
   posterize,
   threshold,
 } from './grading.ts';
+export { deliveryPresets, LoudnessMeter, loudnessGain } from './loudness.ts';
 export type { MathOptions } from './math.ts';
 export { math } from './math.ts';
 export type {

@@ -1060,6 +1060,12 @@ interface RenderOptions<Props> {
     numberOfChannels?: number; // default 2
     /** Write a silent track even when nothing is audible. Default false. */
     forceTrack?: boolean;
+    /**
+     * Normalize the mix to this integrated loudness (LUFS, ITU-R BS.1770 / EBU R128), such as −14 for YouTube or
+     * −23 for broadcast. The mix is measured first, then one gain is applied, lowered if needed so sample peaks stay
+     * at or below −1 dBFS.
+     */
+    loudness?: number;
   };
   /** Render only a section, in seconds. */
   trim?: { start?: number; end?: number };
@@ -1079,6 +1085,11 @@ interface RenderOptions<Props> {
   profile?: boolean;
 }
 ```
+
+`deliveryPresets` holds settings for common destinations, to spread into the options:
+`Render.init({ composition, output, ...deliveryPresets.youtube })`. `youtube` and `broadcast` are 1920×1080,
+`instagram` and `tiktok` are 1080×1920; all use H.264 and AAC at 48 kHz, normalized to −14 LUFS (−23 for
+`broadcast`). `LoudnessMeter` measures integrated loudness and sample peak of audio you feed it.
 
 ### Instance members
 
