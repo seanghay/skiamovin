@@ -25,6 +25,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Layout motion | `layoutId` layout animation and shared elements (pure in time), `states()`, sequence `exit` and `time`, video `speed` ramps, `Composition.withSize()` |
 | 2D physics | `physics()` with Rapier in the Rust core: bodies, joints, contacts, simulated once and looked up by time; identical on Node and WebAssembly |
 | Math | `math()`: LaTeX typeset in Rust with RaTeX and the KaTeX fonts (OFL), pixel-identical across builds, with a `write` draw-on animation |
+| Graphs and camera | `axes()`, `plot`, `numberLine()`, `vectorField`, a panning and zooming `camera()`, and `create`, `fadeIn` and `indicate` reveals |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

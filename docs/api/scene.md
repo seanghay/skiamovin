@@ -840,6 +840,24 @@ from `render` every frame is cheap, and frames look positions up by time (`body`
 `contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
 a test checks the Node and WebAssembly builds give exactly the same positions.
 
+### Graphs, camera and reveals
+
+```ts
+const ax = axes({ x: [-3, 3, 1], y: [-1, 9, 2], width: 900, height: 600, draw: t });
+ax.view(ax.plot((x) => x * x, { color: '#38bdf8', draw: t - 0.5 }), ax.dot(2, 4));
+```
+
+| Function | What it does |
+|---|---|
+| `axes({ x, y, width, height, color?, ticks?, labels?, draw? })` | Number axes like Manim's `Axes`. Ranges are `[min, max, step?]`; ticks and labels follow the step. `toPoint(x, y)` maps graph coordinates to pixels |
+| `ax.view(...children)` | The axes with plots and dots on top, in a box the size of the plotting area |
+| `ax.plot(fn, { color?, strokeWidth?, samples?, domain?, draw? })` | The graph of a function, drawn on with `draw` |
+| `ax.dot`, `ax.line`, `ax.vectorField` | A point, a line (optionally dashed) and a field of arrows, in graph coordinates |
+| `numberLine({ range, width, labels?, draw? })` | Axes with only an x axis |
+| `camera({ x, y, zoom?, rotate? }, viewport, children)` | Looks at the children through a camera that pans, zooms and rotates. Animate the state to move it |
+| `fitCamera(rect, viewport, margin?)` | Camera state that frames a rectangle |
+| `fadeIn(node, p, { shift? })`, `indicate(node, p, { scale?, color? })`, `create(node, p)` | Manim's reveal animations as functions of progress. `create` traces paths, types text and fades in the rest |
+
 ### `random` and `noise`
 
 ```ts

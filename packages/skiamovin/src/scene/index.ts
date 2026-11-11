@@ -46,6 +46,8 @@ export {
   posterize,
   threshold,
 } from './grading.ts';
+export type { Axes, AxesOptions, CameraState } from './explain.ts';
+export { axes, camera, create, fadeIn, fitCamera, indicate, numberLine } from './explain.ts';
 export type { MathOptions } from './math.ts';
 export { math } from './math.ts';
 export type {
