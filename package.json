@@ -1,0 +1,21 @@
+{
+  "name": "skiamovin-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "node scripts/gen-bindings.mjs",
+    "build:native": "node scripts/build-native.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build:ts": "npm run build -w skiamovin",
+    "build": "npm run build:native && npm run build:wasm && npm run build:ts",
+    "test": "cargo test -p skiamovin-codecs && npm test -w skiamovin",
+    "lint": "biome check . && cargo fmt --all -- --check && cargo clippy --workspace --exclude skiamovin-wasm -- -D warnings",
+    "format": "biome check --write . && cargo fmt --all"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6"
+  },
+  "workspaces": [
+    "packages/skiamovin"
+  ]
+}

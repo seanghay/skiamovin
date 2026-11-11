@@ -1,0 +1,14 @@
+[package]
+name = "skiamovin-wasm"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "skiamovin"
+path = "src/main.rs"
+
+[dependencies]
+skiamovin-core = { path = "../skiamovin-core", features = ["gl"] }
+
+[build-dependencies]
+cc = "1"

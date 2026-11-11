@@ -1,0 +1,60 @@
+{
+  "name": "skiamovin",
+  "version": "0.1.0",
+  "description": "Programmatic video with the full power of Skia, on Node and on the web. Built for Mediabunny.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./media": {
+      "types": "./dist/media/index.d.ts",
+      "default": "./dist/media/index.js"
+    },
+    "./taffy": {
+      "types": "./dist/taffy/index.d.ts",
+      "default": "./dist/taffy/index.js"
+    },
+    "./scene": {
+      "types": "./dist/scene/index.d.ts",
+      "default": "./dist/scene/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#loader": {
+      "types": "./dist/native/loader-node.d.ts",
+      "node": "./dist/native/loader-node.js",
+      "default": "./dist/native/loader-wasm.js"
+    }
+  },
+  "files": [
+    "dist",
+    "native",
+    "wasm"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --test-concurrency=1 test/*.test.ts",
+    "test:portable": "node --test test/smoke.test.ts test/taffy.test.ts test/animation.test.ts"
+  },
+  "peerDependencies": {
+    "mediabunny": "^1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "mediabunny": "^1.65.0",
+    "playwright-core": "^1.65.0",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seanghay/skiamovin.git",
+    "directory": "packages/skiamovin"
+  }
+}

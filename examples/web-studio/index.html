@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skiamovin Studio</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <header>
+    <strong>Skiamovin Studio</strong>
+    <span id="status" class="muted">Loading…</span>
+  </header>
+  <main>
+    <section class="stage">
+      <canvas id="preview" aria-label="Video preview"></canvas>
+      <div class="transport">
+        <button id="play" type="button" disabled>Play</button>
+        <input id="scrub" type="range" min="0" max="6" step="0.0333" value="0" disabled aria-label="Seek" />
+        <span id="time" class="mono">0.00 s</span>
+      </div>
+    </section>
+    <aside>
+      <h2>Props</h2>
+      <label>Title <input id="title" value="Made with Skiamovin" /></label>
+      <label>Subtitle <input id="subtitle" value="Rendered in your browser, on the GPU" /></label>
+      <label>Accent <input id="accent" type="color" value="#7c3aed" /></label>
+      <label>Particles <input id="particles" type="range" min="0" max="120" value="40" /></label>
+      <h2>Export</h2>
+      <label>Size
+        <select id="size">
+          <option value="1920">1080p</option>
+          <option value="1280">720p</option>
+          <option value="3840">4K</option>
+        </select>
+      </label>
+      <button id="export" type="button" class="primary" disabled>Export MP4</button>
+      <progress id="progress" max="1" value="0" hidden></progress>
+      <p id="result" class="muted"></p>
+      <button id="download" type="button" hidden>Download</button>
+      <video id="output" controls muted hidden></video>
+    </aside>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

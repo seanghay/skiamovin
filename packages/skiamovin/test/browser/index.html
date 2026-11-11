@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script type="importmap">
+{
+  "imports": {
+    "skiamovin": "/pkg/dist/index.js",
+    "skiamovin/scene": "/pkg/dist/scene/index.js",
+    "skiamovin/media": "/pkg/dist/media/index.js",
+    "skiamovin/taffy": "/pkg/dist/taffy/index.js",
+    "#loader": "/pkg/dist/native/loader-wasm.js",
+    "mediabunny": "/modules/mediabunny/dist/bundles/mediabunny.mjs"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="preview"></canvas>
+<script type="module" src="/pkg/test/browser/tests.js"></script>
+</body>
+</html>

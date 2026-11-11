@@ -1,0 +1,8 @@
+[package]
+name = "skiamovin-codecs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native hardware video/audio codecs (VideoToolbox / AudioToolbox on macOS) for skiamovin"
+
+[dependencies]

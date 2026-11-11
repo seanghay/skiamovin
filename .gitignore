@@ -1,0 +1,21 @@
+# Build output
+target/
+dist/
+packages/skiamovin/native/
+packages/skiamovin/wasm/
+*.node
+
+# Dependencies
+node_modules/
+
+# Generated media and test output
+test-output/
+examples/assets/
+examples/output/
+examples/web-studio/e2e-output/
+
+# OS and editor files
+.DS_Store
+*.log
+.vscode/
+.idea/

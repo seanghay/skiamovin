@@ -1,0 +1,24 @@
+[package]
+name = "skiamovin-node"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+test = false
+doctest = false
+
+[dependencies]
+napi = { version = "3", default-features = false, features = ["napi8"] }
+napi-derive = "3"
+skiamovin-core = { path = "../skiamovin-core" }
+skiamovin-codecs = { path = "../skiamovin-codecs" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+skiamovin-core = { path = "../skiamovin-core", features = ["metal"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+skiamovin-core = { path = "../skiamovin-core", features = ["vulkan"] }
+
+[build-dependencies]
+napi-build = "2"

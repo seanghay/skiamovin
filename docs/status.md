@@ -1,0 +1,43 @@
+# Implementation status
+
+This page tracks what the current build implements versus what the rest of the docs describe as the target
+design. Everything listed as **implemented** is covered by the test suite (`npm test`).
+
+## Implemented
+
+| Area | Notes |
+|---|---|
+| Core Skia bindings (`skiamovin`) | About 330 functions generated from one Rust definition: surfaces, canvas, paint, paths and path ops, contour measure, images and codecs (incl. animated GIF/WebP frames), gradients and noise, SkSL runtime effects (shaders, color filters, blenders), image/color/mask filters, path effects, blenders, fonts, text blobs, SkParagraph, SVG, pictures, PDF |
+| Node build | Native addon, built and tested in CI for macOS arm64, Linux x64 and arm64, and Windows x64. On Linux and Windows it draws on the CPU |
+| Web build | WebAssembly (emscripten), single-threaded, about 9.8 MB of WASM |
+| GPU | **Metal** on Node (macOS), **WebGL2** in the browser, CPU raster everywhere |
+| Native codecs on Node | VideoToolbox H.264/HEVC encode and decode (hardware), HEVC with alpha; AudioToolbox AAC encode, AAC and MP3 decode. All registered with Mediabunny's custom coder API |
+| `skiamovin/media` | `registerNativeCodecs`, `SurfaceSource`, `ImageSink`, `videoSampleFromSurface`, `videoSampleFromImage`, `imageFromVideoSample` |
+| `skiamovin/taffy` | `TaffyTree` with Flexbox, Grid (incl. `repeat()`, `minmax()`, `fr`, spans, template areas) and Block; JS measure functions |
+| `skiamovin/scene` | `Composition`, `CompositionModule`, all nodes except `lottie`, assets from Mediabunny `Source`s, `interpolate`, `interpolateColor`, `spring`, `Easing`, `Timeline`, `random`, `noise`, `Render` (incl. multi-worker `concurrency` on Node and in the browser), `CompositionSink`, `CompositionAudioSink`, `analyzeAudio`, `Player` |
+| Audio | Mixing of `audio()` and `video()` sources, trims, loops, playback rate, volume automation, soft limiter |
+| Web Workers in the browser | `serveComposition()` serves a composition from a worker. `Player` previews and `Render` exports run there (`worker` option); `Render` can split an export across several workers (`concurrency`) |
+| GPU frames in the browser | Frames stay on the GPU from drawing to the encoder (`Render`) or the screen (`Player`) |
+| GPU frames on macOS | Frames stay on the GPU from drawing to the hardware encoder, and decoded video goes straight to the GPU. Drawing the next frame overlaps encoding the last one |
+
+## Not yet implemented
+
+| Area | Status |
+|---|---|
+| GPU on Linux and Windows (Vulkan, D3D12), Graphite, WebGPU | `gpu.directContexts.makeVulkan()` / `makeD3D()` return `null` (or throw with `strict`). The web build uses WebGL2 |
+| Video codecs on Node outside macOS, and software codecs (VP8/VP9/AV1/OpenH264, Opus) | Not bundled. On Node, MP4/MOV with H.264/HEVC + AAC works; WebM output needs a browser |
+| Skottie / `lottie()` / `LottieAsset` | The prebuilt Skia binaries for macOS and WebAssembly don't include Skottie. `LottieAsset` throws a clear error |
+| Threaded WASM build | Only the single-threaded build exists |
+| Bundled fallback fonts on the web | The web font manager is empty. Load fonts with `FontAsset` (or `FontMgr.newFromData`) |
+| `calc()` in Taffy styles | Not supported |
+| `npx skiamovin` CLI | Not implemented |
+| HDR output | The working color space can be set, but frames are encoded as 8-bit BT.709 |
+| `textlayout.Paragraph.updateForegroundPaint` / `updateFontSize`, `svg` node lookup by id | Not available in this `skia-safe` version. For SVG, use the scene layer's `attributes` override |
+
+## Known limitations
+
+- **WebAssembly and corrupt PNGs.** The prebuilt Skia's libpng reports decode errors with `longjmp`, and the
+  build links it in emscripten setjmp mode with `panic=abort`. Corrupt PNG data may abort the module instead of
+  throwing.
+- **Bold text without a bold font.** `fontWeight: 'bold'` only changes the result when a bold face (or a
+  variable font with a `wght` axis) is registered. There's no synthetic bold.

@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 24
+  EMSDK_VERSION: 4.0.7
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: npm ci
+      - name: Biome
+        run: npx biome ci .
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: TypeScript
+        run: npm run typecheck -w skiamovin
+      - name: Generated bindings are up to date
+        run: |
+          node scripts/gen-bindings.mjs
+          git diff --exit-code
+
+  native:
+    name: Node addon (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-15
+          - name: Linux x64
+            os: ubuntu-24.04
+          - name: Linux arm64
+            os: ubuntu-24.04-arm
+          - name: Windows x64
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: native
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libfreetype-dev
+      - run: npm ci
+      - name: Clippy
+        run: cargo clippy -p skiamovin-node -p skiamovin-codecs -- -D warnings
+      - name: Build
+        run: |
+          node scripts/build-native.mjs
+          npm run build -w skiamovin
+      - name: Test
+        run: npm run test:portable -w skiamovin
+      - uses: actions/upload-artifact@v5
+        with:
+          name: native-${{ runner.os }}-${{ runner.arch }}
+          path: packages/skiamovin/native/*.node
+          if-no-files-found: error
+
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-emscripten
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+      - name: Build
+        run: node scripts/build-wasm.mjs
+      - uses: actions/upload-artifact@v5
+        with:
+          name: wasm
+          path: packages/skiamovin/wasm/
+          if-no-files-found: error
+
+  test-macos:
+    name: Full tests (macOS)
+    needs: wasm
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: native
+      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - uses: actions/download-artifact@v5
+        with:
+          name: wasm
+          path: packages/skiamovin/wasm
+      - run: npm ci
+      - name: Build
+        run: |
+          node scripts/build-native.mjs
+          npm run build -w skiamovin
+      - name: Rust tests
+        run: cargo test -p skiamovin-codecs
+      - name: Node and browser tests
+        run: npm test -w skiamovin
