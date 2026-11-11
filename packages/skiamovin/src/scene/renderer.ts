@@ -47,6 +47,7 @@ import {
   type TextProps,
   type Transform,
 } from './nodes.ts';
+import { segmentUnits } from './text-effects.ts';
 
 const LAYOUT_KEYS = new Set([
   'display',
@@ -834,7 +835,8 @@ export class FrameRenderer {
       case 'text': {
         const p = this.#paragraphFor(n);
         p.layout(Math.max(0, w - il - ir));
-        if (this.comp.textRendering === 'native' || !p.paintOutlines(canvas, [il, it])) p.paint(canvas, [il, it]);
+        if (n.text.split) this.#paintSplit(canvas, p, n, il, it);
+        else if (this.comp.textRendering === 'native' || !p.paintOutlines(canvas, [il, it])) p.paint(canvas, [il, it]);
         break;
       }
       case 'image': {
@@ -959,6 +961,44 @@ export class FrameRenderer {
       r,
       v.map((x) => Math.max(0, Math.min(max, x))),
     );
+  }
+
+  #splitStyles = new Float32Array(0);
+  #splitColors = new Uint32Array(0);
+
+  #paintSplit(
+    canvas: Canvas,
+    p: InstanceType<typeof textlayout.Paragraph>,
+    n: Extract<SceneNode, { type: 'text' }>,
+    x: number,
+    y: number,
+  ): void {
+    const split = n.text.split!;
+    const text = n.content.map((c) => (typeof c === 'string' ? c : c.text)).join('');
+    let starts: Uint32Array, texts: string[];
+    if (split.by === 'lines') {
+      const lines = p.getLineMetrics();
+      starts = Uint32Array.from(lines.map((l) => l.startIndex));
+      texts = lines.map((l) => text.slice(l.startIndex, l.endIndex));
+    } else ({ starts, texts } = segmentUnits(text, split.by, n.text.locale));
+    const count = starts.length;
+    if (this.#splitStyles.length < count * 5) {
+      this.#splitStyles = new Float32Array(count * 5);
+      this.#splitColors = new Uint32Array(count);
+    }
+    const styles = this.#splitStyles,
+      colors = this.#splitColors;
+    const base = n.text.color === undefined || n.text.color instanceof Shader ? undefined : (n.text.color as Color);
+    for (let i = 0; i < count; i++) {
+      const st = split.style({ index: i, count, text: texts[i]!, color: base });
+      styles[i * 5] = st.opacity ?? 1;
+      styles[i * 5 + 1] = st.x ?? 0;
+      styles[i * 5 + 2] = st.y ?? 0;
+      styles[i * 5 + 3] = st.scale ?? 1;
+      styles[i * 5 + 4] = st.rotate ?? 0;
+      colors[i] = st.color === undefined ? 0 : toColorInt(st.color) >>> 0;
+    }
+    p.paintSplit(canvas, [x, y], starts, styles.subarray(0, count * 5), colors.subarray(0, count));
   }
 
   #drawPath(canvas: Canvas, n: Extract<SceneNode, { type: 'path' }>, w: number, h: number): void {

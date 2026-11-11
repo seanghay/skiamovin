@@ -331,6 +331,7 @@ _skm_paragraph_builder_reset
 _skm_paragraph_layout
 _skm_paragraph_paint
 _skm_paragraph_paint_outlines
+_skm_paragraph_paint_split
 _skm_paragraph_metrics
 _skm_paragraph_line_metrics
 _skm_paragraph_rects_for_range

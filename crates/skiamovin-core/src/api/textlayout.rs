@@ -455,6 +455,15 @@ pub struct ParagraphObj {
     styles: Vec<(usize, TextStyle)>,
     /// Outline runs for `paragraph_paint_outlines`, built for the layout width they were made at.
     outlines: Option<(f32, Option<Vec<OutlineRun>>)>,
+    split: Option<SplitCache>,
+}
+
+/// Glyphs grouped into units (characters, words or lines) for `paragraph_paint_split`.
+struct SplitCache {
+    width: f32,
+    starts: Vec<u32>,
+    /// Per unit: its center and its glyph runs, positioned relative to that center.
+    units: Vec<(skia_safe::Point, Vec<OutlineRun>)>,
 }
 
 type OutlineRun = (skia_safe::TextBlob, Paint, Vec<skia_safe::textlayout::TextShadow>);
@@ -535,6 +544,7 @@ impl ParagraphObj {
             last_width: f32::NAN,
             styles: vec![],
             outlines: None,
+            split: None,
         }
     }
     #[allow(dead_code)]
@@ -603,6 +613,149 @@ pub fn paragraph_paint_outlines(h: u32, canvas: u32, x: f32, y: f32) -> R<bool> 
         c.restore();
     })?;
     Ok(true)
+}
+
+/// Paints the text in units (characters, words or lines), each with its own opacity, offset, scale, rotation and
+/// color. `unit_starts` are ascending UTF-16 offsets where each unit begins. `styles` has five numbers per unit:
+/// opacity, dx, dy, scale, rotation in degrees. `colors` has one ARGB color per unit, 0 to keep the text's color.
+/// Units turn around their own center. The grouping is cached for the current layout.
+pub fn paragraph_paint_split(
+    h: u32,
+    canvas: u32,
+    x: f32,
+    y: f32,
+    unit_starts: &[u32],
+    styles: &[f32],
+    colors: &[u32],
+) -> R<()> {
+    let p = get::<ParagraphObj>(h)?;
+    let mut p = p.borrow_mut();
+    let width = p.last_width;
+    let fresh = matches!(&p.split, Some(c) if (c.width == width || (c.width.is_nan() && width.is_nan())) && c.starts == unit_starts);
+    if !fresh {
+        let units = build_split(&mut p, unit_starts);
+        p.split = Some(SplitCache { width, starts: unit_starts.to_vec(), units });
+    }
+    let cache = p.split.as_ref().unwrap();
+    with_canvas(canvas, |c| {
+        for (i, (center, runs)) in cache.units.iter().enumerate() {
+            let s = styles.get(i * 5..i * 5 + 5).unwrap_or(&[1.0, 0.0, 0.0, 1.0, 0.0]);
+            let (opacity, dx, dy, scale, rotate) = (s[0], s[1], s[2], s[3], s[4]);
+            if opacity <= 0.0 || scale == 0.0 {
+                continue;
+            }
+            let color = colors.get(i).copied().unwrap_or(0);
+            let alpha = |a: u8| ((a as f32) * opacity.min(1.0)).round() as u8;
+            c.save();
+            c.translate((x + center.x + dx, y + center.y + dy));
+            if rotate != 0.0 {
+                c.rotate(rotate, None);
+            }
+            if scale != 1.0 {
+                c.scale((scale, scale));
+            }
+            for (blob, paint, shadows) in runs {
+                for shadow in shadows {
+                    let mut sp = Paint::default();
+                    sp.set_anti_alias(true);
+                    sp.set_color(shadow.color.with_a(alpha(shadow.color.a())));
+                    if shadow.blur_sigma > 0.0 {
+                        sp.set_mask_filter(skia_safe::MaskFilter::blur(
+                            skia_safe::BlurStyle::Normal,
+                            shadow.blur_sigma as f32,
+                            false,
+                        ));
+                    }
+                    c.draw_text_blob(blob, shadow.offset, &sp);
+                }
+                let mut paint = paint.clone();
+                if color != 0 {
+                    paint.set_color(skia_safe::Color::new(color));
+                }
+                paint.set_alpha(alpha(paint.alpha()));
+                c.draw_text_blob(blob, (0, 0), &paint);
+            }
+            c.restore();
+        }
+    })
+}
+
+struct SplitPiece {
+    font: skia_safe::Font,
+    style: TextStyle,
+    glyphs: Vec<u16>,
+    positions: Vec<skia_safe::Point>,
+}
+
+fn build_split(p: &mut ParagraphObj, starts: &[u32]) -> Vec<(skia_safe::Point, Vec<OutlineRun>)> {
+    let styles = p.styles.clone();
+    let map8to16 = p.utf8_to_utf16.clone();
+    let style_at = |byte: usize| -> Option<TextStyle> {
+        let i = styles.partition_point(|(start, _)| *start <= byte);
+        styles.get(i.checked_sub(1)?).map(|(_, s)| s.clone())
+    };
+    let n = starts.len().max(1);
+    let unit_of = |u16: u32| starts.partition_point(|s| *s <= u16).saturating_sub(1).min(n - 1);
+    let mut pieces: Vec<Vec<SplitPiece>> = (0..n).map(|_| vec![]).collect();
+    let mut bounds: Vec<(f32, f32, f32, f32)> = vec![(f32::MAX, f32::MAX, f32::MIN, f32::MIN); n];
+    p.paragraph.visit(|_, info| {
+        let Some(info) = info else { return };
+        let origin = info.origin();
+        let font = info.font().clone();
+        let (_, metrics) = font.metrics();
+        let mut widths = vec![0.0; info.glyphs().len()];
+        font.get_widths(info.glyphs(), &mut widths);
+        let starts8 = info.utf8_starts();
+        for (gi, (g, pos)) in info.glyphs().iter().zip(info.positions()).enumerate() {
+            let byte = starts8.get(gi).copied().unwrap_or(0) as usize;
+            let unit = unit_of(map8to16[byte.min(map8to16.len() - 1)] as u32);
+            let Some(style) = style_at(byte) else { continue };
+            let abs = *pos + origin;
+            let list = &mut pieces[unit];
+            match list.last_mut() {
+                Some(piece) if piece.font == font && piece.style == style => {
+                    piece.glyphs.push(*g);
+                    piece.positions.push(abs);
+                }
+                _ => list.push(SplitPiece { font: font.clone(), style, glyphs: vec![*g], positions: vec![abs] }),
+            }
+            let b = &mut bounds[unit];
+            b.0 = b.0.min(abs.x);
+            b.2 = b.2.max(abs.x + widths[gi]);
+            b.1 = b.1.min(abs.y + metrics.ascent);
+            b.3 = b.3.max(abs.y + metrics.descent);
+        }
+    });
+    let mut units = Vec::with_capacity(n);
+    for (unit_pieces, b) in pieces.into_iter().zip(bounds) {
+        let center = if b.0 <= b.2 {
+            skia_safe::Point::new((b.0 + b.2) / 2.0, (b.1 + b.3) / 2.0)
+        } else {
+            skia_safe::Point::new(0.0, 0.0)
+        };
+        let mut runs = vec![];
+        for piece in unit_pieces {
+            let mut font = piece.font.clone();
+            // Outline typefaces keep the output the same across platforms; color emoji fall back to the real font.
+            if let Some(tf) = outline_typeface(&piece.font, &piece.glyphs) {
+                font.set_typeface(tf);
+            }
+            font.set_hinting(skia_safe::FontHinting::None);
+            let rel: Vec<skia_safe::Point> = piece.positions.iter().map(|q| *q - center).collect();
+            let Some(blob) = skia_safe::TextBlob::from_pos_text(&piece.glyphs[..], &rel, &font) else { continue };
+            let paint = if piece.style.has_foreground() {
+                piece.style.foreground()
+            } else {
+                let mut paint = Paint::default();
+                paint.set_color(piece.style.color());
+                paint.set_anti_alias(true);
+                paint
+            };
+            runs.push((blob, paint, piece.style.shadows().to_vec()));
+        }
+        units.push((center, runs));
+    }
+    units
 }
 
 /// Glyph outlines per run with each run's paint, or None if the paragraph can't be drawn as outlines.

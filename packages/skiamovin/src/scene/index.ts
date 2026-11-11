@@ -38,8 +38,11 @@ export type {
   SceneNode,
   Shadow,
   Span,
+  SplitText,
   TextProps,
+  TextUnit,
   Transform,
+  UnitStyle,
   VideoProps,
   VisualStyle,
 } from './nodes.ts';
@@ -65,5 +68,7 @@ export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
+export type { RangeShape, TextAnimatorOptions } from './text-effects.ts';
+export { counter, graphemeCount, scramble, textAnimator } from './text-effects.ts';
 export type { WorkerFactory } from './worker.ts';
 export { CompositionWorker, serveComposition } from './worker.ts';

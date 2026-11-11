@@ -129,6 +129,33 @@ export interface TextProps {
   locale?: string;
   direction?: 'ltr' | 'rtl';
   visibleGraphemes?: number;
+  /** Animates the text in pieces: characters, words or lines, each with its own look. See `textAnimator`. */
+  split?: SplitText;
+}
+
+/** One piece of split text. */
+export interface TextUnit {
+  index: number;
+  count: number;
+  text: string;
+  /** The text node's color, when it's a plain color. */
+  color?: Color;
+}
+
+/** How one piece of split text looks. Offsets are in pixels, rotation in degrees. */
+export interface UnitStyle {
+  opacity?: number;
+  x?: number;
+  y?: number;
+  scale?: number;
+  rotate?: number;
+  color?: Color;
+}
+
+export interface SplitText {
+  /** Characters are grapheme clusters, so a letter with its marks moves as one. Words use the locale's rules. */
+  by: 'chars' | 'words' | 'lines';
+  style: (unit: TextUnit) => UnitStyle;
 }
 
 export interface Span {
@@ -233,6 +260,7 @@ const TEXT_KEYS = new Set([
   'locale',
   'direction',
   'visibleGraphemes',
+  'split',
 ]);
 
 export function text(content: string | readonly (string | Span)[], style: NodeStyle & TextProps = {}): SceneNode {

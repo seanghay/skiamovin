@@ -21,8 +21,10 @@ import {
   Composition,
   CompositionAudioSink,
   CompositionSink,
+  counter,
   draw,
   FontAsset,
+  graphemeCount,
   ImageAsset,
   image,
   interpolate,
@@ -31,6 +33,7 @@ import {
   path,
   Render,
   SvgAsset,
+  scramble,
   sequence,
   series,
   shader,
@@ -38,6 +41,7 @@ import {
   spring,
   svg,
   text,
+  textAnimator,
   video,
 } from 'skiamovin/scene';
 import { OUT, prepareTestMedia } from './fixtures/media.ts';
@@ -423,4 +427,72 @@ test('path node: fill, stroke, trim, arrowheads; morphPath and alongPath', async
   assert.ok(Math.abs(p.x - 100) < 1e-3 && Math.abs(p.y - 50) < 1e-3, JSON.stringify(p));
   assert.ok(Math.abs(p.angle - 90) < 1e-3);
   assert.ok(Math.abs(alongPath('M0 0 L100 0', 0.5).angle) < 1e-6);
+});
+
+test('split text: units, offsets, animators, scramble and counter', async () => {
+  const font = arial;
+  const scene = (split?: import('skiamovin/scene').SplitText) =>
+    new Composition({
+      width: 300,
+      height: 100,
+      frameRate: 30,
+      duration: 1,
+      fonts: [font],
+      background: '#000000',
+      render: () =>
+        box({ size: { width: '100%', height: '100%' }, padding: 10 }, [
+          text('Hello brave world', { fontFamily: 'Arial', fontSize: 30, color: '#ffffff', split }),
+        ]),
+    });
+  const grab = async (split?: import('skiamovin/scene').SplitText) => {
+    const sink = new CompositionSink(scene(split), { gpu: 'raster' });
+    const img = (await sink.getImage(0))!.image;
+    const px = img.readPixels(0, 0, new ImageInfo(300, 100, ColorType.RGBA_8888, AlphaType.Unpremul));
+    await sink.dispose();
+    return px;
+  };
+  const plain = await grab();
+  // Split painting with no changes looks like plain text.
+  const same = await grab({ by: 'words', style: () => ({}) });
+  let diff = 0;
+  for (let i = 0; i < plain.length; i++) diff = Math.max(diff, Math.abs(plain[i]! - same[i]!));
+  assert.ok(diff <= 2, `split text matches plain text (max diff ${diff})`);
+  // Hiding every unit leaves the background.
+  const hidden = await grab(textAnimator({ by: 'chars', properties: { opacity: 0 } }));
+  assert.ok(
+    hidden.every((v, i) => i % 4 === 3 || v === 0),
+    'all characters hidden',
+  );
+  // Moving only the second word down: its old place is empty, the first word stays.
+  const moved = await grab({ by: 'words', style: (u) => (u.index === 1 ? { y: 50 } : {}) });
+  const lit = (buf: Uint8Array, x0: number, x1: number, y0: number, y1: number) => {
+    let n = 0;
+    for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) if (buf[(yy * 300 + xx) * 4]! > 128) n++;
+    return n;
+  };
+  assert.ok(lit(moved, 0, 80, 10, 45) > 50, 'first word still in place');
+  assert.ok(lit(plain, 95, 170, 10, 45) > 50 && lit(moved, 95, 170, 10, 45) < 5, 'second word moved away');
+  assert.ok(lit(moved, 95, 170, 60, 95) > 50, 'second word drawn lower');
+
+  // Range selectors.
+  const units = (a: import('skiamovin/scene').SplitText, count: number) =>
+    Array.from({ length: count }, (_, i) => a.style({ index: i, count, text: '' }).opacity ?? 1);
+  assert.deepEqual(units(textAnimator({ by: 'chars', end: 0.5, properties: { opacity: 0 } }), 4), [0, 0, 1, 1]);
+  const ramp = units(textAnimator({ by: 'chars', shape: 'rampUp', properties: { opacity: 0 } }), 4);
+  assert.ok(ramp[0]! > ramp[1]! && ramp[1]! > ramp[2]! && ramp[2]! > ramp[3]!, `ramp ${ramp}`);
+  assert.deepEqual(
+    units(textAnimator({ by: 'chars', end: 0.5, offset: 0.5, properties: { opacity: 0 } }), 4),
+    [1, 1, 0, 0],
+  );
+
+  // Effects.
+  const s1 = scramble('Hello world', 0.5, { frame: 3, seed: 1 });
+  assert.equal(s1.length, 'Hello world'.length);
+  assert.ok(s1.startsWith('Hello'));
+  assert.equal(s1[5], ' ');
+  assert.equal(s1, scramble('Hello world', 0.5, { frame: 3, seed: 1 }));
+  assert.notEqual(s1, scramble('Hello world', 0.5, { frame: 4, seed: 1 }));
+  assert.equal(scramble('Hello', 1), 'Hello');
+  assert.equal(counter(1234.5, { decimals: 1, locale: 'en-US', prefix: '$' }), '$1,234.5');
+  assert.equal(graphemeCount('été'), 3);
 });

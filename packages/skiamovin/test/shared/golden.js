@@ -13,6 +13,7 @@ import {
   shader,
   spring,
   text,
+  textAnimator,
 } from 'skiamovin/scene';
 import { TaffyTree } from 'skiamovin/taffy';
 
@@ -74,6 +75,29 @@ export function goldenScenes(font) {
             },
             [text('Golden frames 123', { fontFamily: 'Arial', fontSize: 22 + timestamp * 4, color: '#111827' })],
           ),
+      }),
+    },
+    {
+      name: 'split',
+      times: [0.4, 1],
+      comp: new Composition({
+        ...base,
+        fonts: [font],
+        render: ({ timestamp }) =>
+          box({ size: { width: '100%', height: '100%' }, background: '#0f172a', padding: 16 }, [
+            text('Split text, letter by letter', {
+              fontFamily: 'Arial',
+              fontSize: 24,
+              color: '#f8fafc',
+              split: textAnimator({
+                by: 'chars',
+                shape: 'rampUp',
+                end: 0.3,
+                offset: timestamp - 0.3,
+                properties: { opacity: 0, y: 20, rotate: 30, scale: 0.5, color: '#f59e0b' },
+              }),
+            }),
+          ]),
       }),
     },
     {

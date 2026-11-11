@@ -336,6 +336,7 @@ export interface GeneratedBinding {
   paragraph_layout(h: number, width: number): void;
   paragraph_paint(h: number, canvas: number, x: number, y: number): void;
   paragraph_paint_outlines(h: number, canvas: number, x: number, y: number): boolean;
+  paragraph_paint_split(h: number, canvas: number, x: number, y: number, unit_starts: Uint32Array, styles: Float32Array, colors: Uint32Array): void;
   paragraph_metrics(h: number): Float32Array;
   paragraph_line_metrics(h: number): Float32Array;
   paragraph_rects_for_range(h: number, start: number, end: number, h_style: number, w_style: number): Float32Array;
@@ -686,6 +687,7 @@ export const SIGNATURES: Record<string, string> = {
   paragraph_layout: 'uf:v',
   paragraph_paint: 'uuff:v',
   paragraph_paint_outlines: 'uuff:b',
+  paragraph_paint_split: 'uuffUFU:v',
   paragraph_metrics: 'u:F',
   paragraph_line_metrics: 'u:F',
   paragraph_rects_for_range: 'uuuuu:F',

@@ -1673,6 +1673,11 @@ pub fn paragraph_paint_outlines(h: u32, canvas: u32, x: f64, y: f64) -> napi::Re
     api::textlayout::paragraph_paint_outlines(h, canvas, x as f32, y as f32).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "paragraph_paint_split")]
+pub fn paragraph_paint_split(h: u32, canvas: u32, x: f64, y: f64, unit_starts: Uint32Array, styles: Float32Array, colors: Uint32Array) -> napi::Result<()> {
+    api::textlayout::paragraph_paint_split(h, canvas, x as f32, y as f32, &unit_starts, &styles, &colors).map_err(err)
+}
+
 #[napi(js_name = "paragraph_metrics")]
 pub fn paragraph_metrics(h: u32) -> napi::Result<Float32Array> {
     api::textlayout::paragraph_metrics(h).map(|v| Float32Array::new(v)).map_err(err)

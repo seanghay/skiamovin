@@ -2613,6 +2613,14 @@ pub extern "C" fn skm_paragraph_paint_outlines(h: u32, canvas: u32, x: f32, y: f
 }
 
 #[no_mangle]
+pub extern "C" fn skm_paragraph_paint_split(h: u32, canvas: u32, x: f32, y: f32, unit_starts_ptr: *const u32, unit_starts_len: usize, styles_ptr: *const f32, styles_len: usize, colors_ptr: *const u32, colors_len: usize) {
+    match api::textlayout::paragraph_paint_split(h, canvas, x, y, unsafe { crate::rt::slice_from(unit_starts_ptr, unit_starts_len) }, unsafe { crate::rt::slice_from(styles_ptr, styles_len) }, unsafe { crate::rt::slice_from(colors_ptr, colors_len) }) {
+        Ok(v) => { let _ = v; },
+        Err(e) => { crate::rt::set_error(e); () }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_paragraph_metrics(h: u32) -> *const u8 {
     match api::textlayout::paragraph_metrics(h) {
         Ok(v) => crate::rt::ret_vec(v),

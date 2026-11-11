@@ -515,6 +515,28 @@ class Paragraph extends SkObject {
   paintOutlines(canvas: Canvas, [x, y]: Point): boolean {
     return N().paragraph_paint_outlines(this.handle, canvas.handle, x, y);
   }
+  /**
+   * Paints the text in units, each with its own look. `unitStarts` are ascending UTF-16 offsets where units
+   * begin. `styles` holds five numbers per unit (opacity, dx, dy, scale, rotation in degrees) and `colors` one
+   * ARGB color per unit (0 keeps the text's color). Units turn around their own center.
+   */
+  paintSplit(
+    canvas: Canvas,
+    [x, y]: Point,
+    unitStarts: Uint32Array | readonly number[],
+    styles: Float32Array | readonly number[],
+    colors: Uint32Array | readonly number[],
+  ): void {
+    N().paragraph_paint_split(
+      this.handle,
+      canvas.handle,
+      x,
+      y,
+      unitStarts instanceof Uint32Array ? unitStarts : Uint32Array.from(unitStarts),
+      styles instanceof Float32Array ? styles : Float32Array.from(styles),
+      colors instanceof Uint32Array ? colors : Uint32Array.from(colors),
+    );
+  }
   #m(i: number): number {
     return N().paragraph_metrics(this.handle)[i]!;
   }
