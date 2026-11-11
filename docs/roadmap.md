@@ -17,19 +17,21 @@ Every feature on this list follows these rules:
   is seeded, and shaders take `t * speed` rather than a running clock.
 - **Same result on Node and in the browser.** Logic that must match exactly (layout, physics, path math, text
   shaping) lives in the Rust core so both builds share it.
-- **CPU rendering is the reference.** Exports are judged against Skia's CPU renderer, which gives the same
-  pixels on Node and in WebAssembly. GPU previews (Metal, WebGL2) must match it within a stated tolerance, to
-  start: at most 1% of pixels off by more than 16/255.
+- **CPU rendering is the reference.** Exports are judged against Skia's CPU renderer. Between the Node and
+  WebAssembly builds, shapes and layout match exactly, and text and shaders differ by at most 4/255 per
+  channel. GPU previews (Metal, WebGL2) must match the CPU within a stated tolerance, to start: at most 1% of
+  pixels off by more than 16/255.
 - **Heavy work happens once.** Path matching for morphs, LUT packing, physics, text shaping and diagram layout
   are computed once per input, cached and shared with workers.
 - **Plain data in, pixels out.** No DOM, no CSS engine. Styles end up as `NodeStyle` values.
 - **Tested.** Each feature lands with value or pixel tests and an example video.
 
-## Phase 0: Cross-build tests
+## Phase 0: Cross-build tests (done)
 
-Before any feature: a test harness that renders the same compositions with the CPU renderer on Node and in
-WebAssembly and compares them, by hash for math, layout and physics, and within the tolerance above for
-shaders and GPU output. Every later phase uses it to meet the "Tested" rule.
+`test/golden.test.ts` renders shared scenes (`test/shared/golden.js`) with the CPU renderer in the Node addon
+and in WebAssembly, and compares the pixels and the Taffy layout. Text is drawn from glyph outlines by default
+(`textRendering: 'outlines'`), which made it match across platforms and also made moving text faster. Every
+later phase adds its scenes here.
 
 ## Phase 1: Animation basics
 

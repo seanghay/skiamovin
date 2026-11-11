@@ -389,6 +389,11 @@ class ParagraphStyle extends SkObject {
     N().paragraph_style_set_text_direction(this.handle, d);
     return this;
   }
+  /** Lays text out with unhinted advances, so line breaks and positions match on every platform. */
+  turnHintingOff(): this {
+    N().paragraph_style_turn_hinting_off(this.handle);
+    return this;
+  }
   setMaxLines(n: number | null): this {
     N().paragraph_style_set_max_lines(this.handle, n ?? 0);
     return this;
@@ -502,6 +507,13 @@ class Paragraph extends SkObject {
   }
   paint(canvas: Canvas, [x, y]: Point): void {
     N().paragraph_paint(this.handle, canvas.handle, x, y);
+  }
+  /**
+   * Paints the text as glyph outlines, which gives the same pixels on every platform. Returns false, having
+   * drawn nothing, when the paragraph uses decorations, backgrounds or glyphs without outlines (color emoji).
+   */
+  paintOutlines(canvas: Canvas, [x, y]: Point): boolean {
+    return N().paragraph_paint_outlines(this.handle, canvas.handle, x, y);
   }
   #m(i: number): number {
     return N().paragraph_metrics(this.handle)[i]!;

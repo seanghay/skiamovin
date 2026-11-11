@@ -518,6 +518,7 @@ export class FrameRenderer {
     const align = { left: 0, right: 1, center: 2, justify: 3, start: 4, end: 5 }[t.textAlign ?? 'start'];
     ps.setTextAlign(align as 0);
     if (t.direction === 'rtl') ps.setTextDirection(1);
+    if (this.comp.textRendering !== 'native') ps.turnHintingOff();
     if (t.maxLines) ps.setMaxLines(t.maxLines);
     if (t.ellipsis) ps.setEllipsis(t.ellipsis);
     ps.setApplyRoundingHack(false);
@@ -817,7 +818,7 @@ export class FrameRenderer {
       case 'text': {
         const p = this.#paragraphFor(n);
         p.layout(Math.max(0, w - il - ir));
-        p.paint(canvas, [il, it]);
+        if (this.comp.textRendering === 'native' || !p.paintOutlines(canvas, [il, it])) p.paint(canvas, [il, it]);
         break;
       }
       case 'image': {

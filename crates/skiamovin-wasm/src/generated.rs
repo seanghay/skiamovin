@@ -2421,6 +2421,14 @@ pub extern "C" fn skm_paragraph_style_set_text_align(h: u32, a: u32) {
 }
 
 #[no_mangle]
+pub extern "C" fn skm_paragraph_style_turn_hinting_off(h: u32) {
+    match api::textlayout::paragraph_style_turn_hinting_off(h) {
+        Ok(v) => { let _ = v; },
+        Err(e) => { crate::rt::set_error(e); () }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_paragraph_style_set_text_direction(h: u32, d: u32) {
     match api::textlayout::paragraph_style_set_text_direction(h, d) {
         Ok(v) => { let _ = v; },
@@ -2553,6 +2561,14 @@ pub extern "C" fn skm_paragraph_paint(h: u32, canvas: u32, x: f32, y: f32) {
     match api::textlayout::paragraph_paint(h, canvas, x, y) {
         Ok(v) => { let _ = v; },
         Err(e) => { crate::rt::set_error(e); () }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_paragraph_paint_outlines(h: u32, canvas: u32, x: f32, y: f32) -> i32 {
+    match api::textlayout::paragraph_paint_outlines(h, canvas, x, y) {
+        Ok(v) => (v) as i32,
+        Err(e) => { crate::rt::set_error(e); 0 }
     }
 }
 

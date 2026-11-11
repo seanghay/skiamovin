@@ -13,6 +13,12 @@ export interface CompositionOptions<Props> {
   colorSpace?: 'srgb' | 'display-p3' | 'rec2020-pq' | 'rec2020-hlg';
   /** Fonts available to `text` nodes, by family name. */
   fonts?: FontAsset[];
+  /**
+   * How text is drawn. 'outlines' (default) fills glyph outlines, so text looks the same on every platform and
+   * moves smoothly when scaled. 'native' uses the platform's glyph rasterizer, which is faster for large amounts
+   * of static text but differs between macOS, Windows, Linux and the browser.
+   */
+  textRendering?: 'outlines' | 'native';
   defaultProps?: Props;
   /** Must be pure and synchronous. */
   render: (ctx: RenderContext<Props>) => Child;
@@ -26,6 +32,7 @@ export class Composition<Props = Record<string, unknown>> {
   readonly background: Color | undefined;
   readonly colorSpace: CompositionOptions<Props>['colorSpace'];
   readonly fonts: FontAsset[];
+  readonly textRendering: 'outlines' | 'native';
   readonly defaultProps: Props;
   readonly render: (ctx: RenderContext<Props>) => Child;
   readonly #duration: CompositionOptions<Props>['duration'];
@@ -40,6 +47,7 @@ export class Composition<Props = Record<string, unknown>> {
     this.background = options.background;
     this.colorSpace = options.colorSpace;
     this.fonts = options.fonts ?? [];
+    this.textRendering = options.textRendering ?? 'outlines';
     this.defaultProps = (options.defaultProps ?? {}) as Props;
     this.render = options.render;
     this.#duration = options.duration;

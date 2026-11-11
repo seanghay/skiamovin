@@ -1553,6 +1553,11 @@ pub fn paragraph_style_set_text_align(h: u32, a: u32) -> napi::Result<()> {
     api::textlayout::paragraph_style_set_text_align(h, a).map_err(err)
 }
 
+#[napi(js_name = "paragraph_style_turn_hinting_off")]
+pub fn paragraph_style_turn_hinting_off(h: u32) -> napi::Result<()> {
+    api::textlayout::paragraph_style_turn_hinting_off(h).map_err(err)
+}
+
 #[napi(js_name = "paragraph_style_set_text_direction")]
 pub fn paragraph_style_set_text_direction(h: u32, d: u32) -> napi::Result<()> {
     api::textlayout::paragraph_style_set_text_direction(h, d).map_err(err)
@@ -1636,6 +1641,11 @@ pub fn paragraph_layout(h: u32, width: f64) -> napi::Result<()> {
 #[napi(js_name = "paragraph_paint")]
 pub fn paragraph_paint(h: u32, canvas: u32, x: f64, y: f64) -> napi::Result<()> {
     api::textlayout::paragraph_paint(h, canvas, x as f32, y as f32).map_err(err)
+}
+
+#[napi(js_name = "paragraph_paint_outlines")]
+pub fn paragraph_paint_outlines(h: u32, canvas: u32, x: f64, y: f64) -> napi::Result<bool> {
+    api::textlayout::paragraph_paint_outlines(h, canvas, x as f32, y as f32).map(|v| v).map_err(err)
 }
 
 #[napi(js_name = "paragraph_metrics")]

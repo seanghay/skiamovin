@@ -262,6 +262,13 @@ pub fn paragraph_style_set_text_align(h: u32, a: u32) -> R<()> {
 }
 
 /// 0 ltr, 1 rtl.
+/// Lays text out with unhinted advances, which are the same on every font backend.
+pub fn paragraph_style_turn_hinting_off(h: u32) -> R<()> {
+    ps(h, |s| {
+        s.turn_hinting_off();
+    })
+}
+
 pub fn paragraph_style_set_text_direction(h: u32, d: u32) -> R<()> {
     ps(h, |s| {
         s.set_text_direction(if d == 1 { TextDirection::RTL } else { TextDirection::LTR });
@@ -342,22 +349,38 @@ pub fn paragraph_style_set_strut(
 pub struct BuilderObj {
     builder: ParagraphBuilder,
     text: String,
+    default_style: TextStyle,
+    stack: Vec<TextStyle>,
+    /// Style of each run of added text, by UTF-8 start offset, for painting text as outlines.
+    styles: Vec<(usize, TextStyle)>,
 }
 
 pub fn paragraph_builder_new(style: u32, font_collection: u32) -> R<u32> {
     let s = cloned::<ParagraphStyle>(style)?;
     let fc = cloned::<FontCollection>(font_collection)?;
-    Ok(put(BuilderObj { builder: ParagraphBuilder::new(&s, fc), text: String::new() }))
+    Ok(put(BuilderObj {
+        builder: ParagraphBuilder::new(&s, fc),
+        text: String::new(),
+        default_style: s.text_style().clone(),
+        stack: vec![],
+        styles: vec![],
+    }))
 }
 
 pub fn paragraph_builder_push_style(h: u32, text_style: u32) -> R<()> {
     let t = cloned::<TextStyle>(text_style)?;
-    get::<BuilderObj>(h)?.borrow_mut().builder.push_style(&t);
+    let b = get::<BuilderObj>(h)?;
+    let mut b = b.borrow_mut();
+    b.builder.push_style(&t);
+    b.stack.push(t);
     Ok(())
 }
 
 pub fn paragraph_builder_pop(h: u32) -> R<()> {
-    get::<BuilderObj>(h)?.borrow_mut().builder.pop();
+    let b = get::<BuilderObj>(h)?;
+    let mut b = b.borrow_mut();
+    b.builder.pop();
+    b.stack.pop();
     Ok(())
 }
 
@@ -365,6 +388,9 @@ pub fn paragraph_builder_add_text(h: u32, text: &str) -> R<()> {
     let b = get::<BuilderObj>(h)?;
     let mut b = b.borrow_mut();
     b.builder.add_text(text);
+    let style = b.stack.last().cloned().unwrap_or_else(|| b.default_style.clone());
+    let start = b.text.len();
+    b.styles.push((start, style));
     b.text.push_str(text);
     Ok(())
 }
@@ -399,7 +425,11 @@ pub fn paragraph_builder_build(h: u32) -> R<u32> {
     let mut b = b.borrow_mut();
     let p = b.builder.build();
     let text = std::mem::take(&mut b.text);
-    Ok(put(ParagraphObj::new(p, text)))
+    let styles = std::mem::take(&mut b.styles);
+    b.stack.clear();
+    let mut obj = ParagraphObj::new(p, text);
+    obj.styles = styles;
+    Ok(put(obj))
 }
 
 pub fn paragraph_builder_reset(h: u32) -> R<()> {
@@ -407,6 +437,8 @@ pub fn paragraph_builder_reset(h: u32) -> R<()> {
     let mut b = b.borrow_mut();
     b.builder.reset();
     b.text.clear();
+    b.styles.clear();
+    b.stack.clear();
     Ok(())
 }
 
@@ -420,6 +452,64 @@ pub struct ParagraphObj {
     /// utf16 index for each utf8 byte offset (len = utf8_len + 1)
     utf8_to_utf16: Vec<usize>,
     pub last_width: f32,
+    styles: Vec<(usize, TextStyle)>,
+    /// Outline runs for `paragraph_paint_outlines`, built for the layout width they were made at.
+    outlines: Option<(f32, Option<Vec<OutlineRun>>)>,
+}
+
+type OutlineRun = (skia_safe::TextBlob, Paint, Vec<skia_safe::textlayout::TextShadow>);
+
+struct OutlineFace {
+    glyphs: std::collections::BTreeSet<u16>,
+    typeface: skia_safe::Typeface,
+}
+
+thread_local! {
+    /// For each real typeface, a typeface made from its glyph outlines. Skia rasterizes and caches those glyphs
+    /// with its own path renderer, so they look the same on every platform.
+    static OUTLINE_FACES: std::cell::RefCell<std::collections::HashMap<skia_safe::typeface::TypefaceId, OutlineFace>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// The outline typeface for `font`'s typeface, rebuilt when `needed` has glyphs it lacks. None if a visible glyph
+/// has no outline (a color emoji).
+fn outline_typeface(font: &skia_safe::Font, needed: &[u16]) -> Option<skia_safe::Typeface> {
+    let real = font.typeface();
+    let id = real.unique_id();
+    OUTLINE_FACES.with(|faces| {
+        let mut faces = faces.borrow_mut();
+        if let Some(face) = faces.get(&id) {
+            if needed.iter().all(|g| face.glyphs.contains(g)) {
+                return Some(face.typeface.clone());
+            }
+        }
+        let mut glyphs = faces.get(&id).map(|f| f.glyphs.clone()).unwrap_or_default();
+        glyphs.extend(needed.iter().copied());
+        let mut unit = skia_safe::Font::from_typeface(real, 1.0);
+        unit.set_hinting(skia_safe::FontHinting::None);
+        let mut builder = skia_safe::utils::CustomTypefaceBuilder::new();
+        builder.set_metrics(&unit.metrics().1, None);
+        for g in &glyphs {
+            let mut advance = [0.0];
+            unit.get_widths(&[*g], &mut advance);
+            let path = match unit.get_path(*g) {
+                Some(path) => path,
+                None => {
+                    // Some backends give no path for empty glyphs such as spaces.
+                    let mut bounds = [skia_safe::Rect::default()];
+                    unit.get_bounds(&[*g], &mut bounds, None);
+                    if !bounds[0].is_empty() {
+                        return None;
+                    }
+                    skia_safe::Path::default()
+                }
+            };
+            builder.set_glyph(*g, advance[0], &path);
+        }
+        let typeface = builder.detach()?;
+        faces.insert(id, OutlineFace { glyphs, typeface: typeface.clone() });
+        Some(typeface)
+    })
 }
 
 impl ParagraphObj {
@@ -438,7 +528,14 @@ impl ParagraphObj {
         }
         u16_to_8.push(text.len());
         u8_to_16[text.len()] = u16i;
-        Self { paragraph, utf16_to_utf8: u16_to_8, utf8_to_utf16: u8_to_16, last_width: f32::NAN }
+        Self {
+            paragraph,
+            utf16_to_utf8: u16_to_8,
+            utf8_to_utf16: u8_to_16,
+            last_width: f32::NAN,
+            styles: vec![],
+            outlines: None,
+        }
     }
     #[allow(dead_code)]
     fn u16_to_u8(&self, i: u32) -> usize {
@@ -469,6 +566,89 @@ pub fn paragraph_paint(h: u32, canvas: u32, x: f32, y: f32) -> R<()> {
     let p = get::<ParagraphObj>(h)?;
     let p = p.borrow();
     with_canvas(canvas, |c| p.paragraph.paint(c, (x, y)))
+}
+
+/// Paints the text as glyph outlines rather than through the platform's glyph rasterizer, so the native and
+/// WebAssembly builds produce the same pixels. Returns false, having drawn nothing, when the paragraph uses
+/// something outlines can't reproduce (decorations, backgrounds, or glyphs without outlines such as color
+/// emoji); the caller should then use `paragraph_paint`.
+pub fn paragraph_paint_outlines(h: u32, canvas: u32, x: f32, y: f32) -> R<bool> {
+    let p = get::<ParagraphObj>(h)?;
+    let mut p = p.borrow_mut();
+    let width = p.last_width;
+    if !matches!(&p.outlines, Some((w, _)) if *w == width || (w.is_nan() && width.is_nan())) {
+        let runs = build_outlines(&mut p);
+        p.outlines = Some((width, runs));
+    }
+    let Some((_, Some(runs))) = &p.outlines else { return Ok(false) };
+    with_canvas(canvas, |c| {
+        c.save();
+        c.translate((x, y));
+        for (path, paint, shadows) in runs {
+            for shadow in shadows {
+                let mut sp = Paint::default();
+                sp.set_anti_alias(true);
+                sp.set_color(shadow.color);
+                if shadow.blur_sigma > 0.0 {
+                    sp.set_mask_filter(skia_safe::MaskFilter::blur(
+                        skia_safe::BlurStyle::Normal,
+                        shadow.blur_sigma as f32,
+                        false,
+                    ));
+                }
+                c.draw_text_blob(path, shadow.offset, &sp);
+            }
+            c.draw_text_blob(path, (0, 0), paint);
+        }
+        c.restore();
+    })?;
+    Ok(true)
+}
+
+/// Glyph outlines per run with each run's paint, or None if the paragraph can't be drawn as outlines.
+fn build_outlines(p: &mut ParagraphObj) -> Option<Vec<OutlineRun>> {
+    if p.styles.iter().any(|(_, s)| s.has_background() || s.decoration_type() != TextDecoration::NO_DECORATION) {
+        return None;
+    }
+    let styles = p.styles.clone();
+    let style_at = |byte: usize| -> Option<&TextStyle> {
+        let i = styles.partition_point(|(start, _)| *start <= byte);
+        styles.get(i.checked_sub(1)?).map(|(_, s)| s)
+    };
+    let mut runs: Vec<OutlineRun> = vec![];
+    let mut ok = true;
+    p.paragraph.visit(|_, info| {
+        let Some(info) = info else { return };
+        if !ok {
+            return;
+        }
+        let Some(style) = info.utf8_starts().first().and_then(|b| style_at(*b as usize)) else {
+            ok = false;
+            return;
+        };
+        let origin = info.origin();
+        let Some(typeface) = outline_typeface(info.font(), info.glyphs()) else {
+            ok = false;
+            return;
+        };
+        let mut font = info.font().clone();
+        font.set_typeface(typeface);
+        font.set_hinting(skia_safe::FontHinting::None);
+        let positions: Vec<skia_safe::Point> = info.positions().iter().map(|p| *p + origin).collect();
+        let Some(blob) = skia_safe::TextBlob::from_pos_text(info.glyphs(), &positions, &font) else {
+            return;
+        };
+        let paint = if style.has_foreground() {
+            style.foreground()
+        } else {
+            let mut paint = Paint::default();
+            paint.set_color(style.color());
+            paint.set_anti_alias(true);
+            paint
+        };
+        runs.push((blob, paint, style.shadows().to_vec()));
+    });
+    ok.then_some(runs)
 }
 
 /// `[height, maxWidth, minIntrinsicWidth, maxIntrinsicWidth, longestLine, alphabeticBaseline, ideographicBaseline, didExceedMaxLines, lineNumber]`.

@@ -312,6 +312,7 @@ export interface GeneratedBinding {
   paragraph_style_new(): number;
   paragraph_style_set_text_style(h: number, text_style: number): void;
   paragraph_style_set_text_align(h: number, a: number): void;
+  paragraph_style_turn_hinting_off(h: number): void;
   paragraph_style_set_text_direction(h: number, d: number): void;
   paragraph_style_set_max_lines(h: number, n: number): void;
   paragraph_style_set_ellipsis(h: number, e: string): void;
@@ -329,6 +330,7 @@ export interface GeneratedBinding {
   paragraph_builder_reset(h: number): void;
   paragraph_layout(h: number, width: number): void;
   paragraph_paint(h: number, canvas: number, x: number, y: number): void;
+  paragraph_paint_outlines(h: number, canvas: number, x: number, y: number): boolean;
   paragraph_metrics(h: number): Float32Array;
   paragraph_line_metrics(h: number): Float32Array;
   paragraph_rects_for_range(h: number, start: number, end: number, h_style: number, w_style: number): Float32Array;
@@ -655,6 +657,7 @@ export const SIGNATURES: Record<string, string> = {
   paragraph_style_new: ':u',
   paragraph_style_set_text_style: 'uu:v',
   paragraph_style_set_text_align: 'uu:v',
+  paragraph_style_turn_hinting_off: 'u:v',
   paragraph_style_set_text_direction: 'uu:v',
   paragraph_style_set_max_lines: 'uu:v',
   paragraph_style_set_ellipsis: 'us:v',
@@ -672,6 +675,7 @@ export const SIGNATURES: Record<string, string> = {
   paragraph_builder_reset: 'u:v',
   paragraph_layout: 'uf:v',
   paragraph_paint: 'uuff:v',
+  paragraph_paint_outlines: 'uuff:b',
   paragraph_metrics: 'u:F',
   paragraph_line_metrics: 'u:F',
   paragraph_rects_for_range: 'uuuuu:F',

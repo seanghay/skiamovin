@@ -370,3 +370,18 @@ window.runTest = async (name) => {
 };
 window.testNames = Object.keys(tests);
 window.ready = true;
+
+// Golden frames for the cross-build comparison in test/golden.test.ts.
+window.golden = async () => {
+  await init();
+  const { renderGolden, goldenLayout } = await import('../shared/golden.js');
+  const { FontAsset: Font } = await import('skiamovin/scene');
+  const font = new Font(new UrlSource('/fonts/Arial.ttf'), { family: 'Arial' });
+  const frames = await renderGolden(font);
+  const b64 = (u8) => {
+    let s = '';
+    for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  };
+  return { frames: frames.map((f) => ({ name: f.name, pixels: b64(f.pixels) })), layout: goldenLayout() };
+};
