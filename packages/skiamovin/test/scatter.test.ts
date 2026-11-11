@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { init } from 'skiamovin';
-import { lookAt, scatter } from 'skiamovin/scene';
+import { ik2, lookAt, scatter } from 'skiamovin/scene';
 
 test('scatter: seeded points in an area, spread apart', () => {
   const a = scatter(60, { area: { width: 1000, height: 600 }, spacing: 50, seed: 'x' });
@@ -47,4 +47,16 @@ test('lookAt: rotation toward a point', () => {
   assert.equal(lookAt([0, 0], [10, 0]), 0);
   assert.equal(lookAt([0, 0], [0, 10]), 90);
   assert.equal(lookAt([5, 5], [0, 5]), 180);
+});
+
+test('ik2: reaches reachable targets, points at far ones', () => {
+  const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} vs ${b}`);
+  const r = ik2([0, 0], [100, 50], [80, 70]);
+  near(r.end[0], 100);
+  near(r.end[1], 50);
+  near(Math.hypot(r.joint[0], r.joint[1]), 80);
+  const other = ik2([0, 0], [100, 50], [80, 70], -1);
+  assert.ok(Math.sign(other.lower) !== Math.sign(r.lower), 'bends the other way');
+  const far = ik2([0, 0], [500, 0], [80, 70]);
+  assert.ok(Math.abs(far.end[0] - 150) < 1e-3 && Math.abs(far.upper) < 1e-2, JSON.stringify(far));
 });

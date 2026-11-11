@@ -92,3 +92,30 @@ export function scatter(count: number, options: ScatterOptions): ScatterPoint[] 
 export function lookAt(from: readonly [number, number], to: readonly [number, number]): number {
   return (Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI;
 }
+
+/**
+ * Two-bone inverse kinematics, for arms and legs in a 2D rig: where the middle joint goes so a chain of two bones
+ * from `root` reaches `target` (or points at it when it's too far). `bend` 1 or -1 picks which way the joint bends.
+ * Angles are in degrees: `upper` is the first bone's rotation, `lower` the second bone's rotation relative to it.
+ */
+export function ik2(
+  root: readonly [number, number],
+  target: readonly [number, number],
+  lengths: readonly [number, number],
+  bend: 1 | -1 = 1,
+): { upper: number; lower: number; joint: [number, number]; end: [number, number] } {
+  const [a, b] = lengths;
+  const dx = target[0] - root[0],
+    dy = target[1] - root[1];
+  const d = Math.min(a + b - 1e-9, Math.max(Math.abs(a - b) + 1e-9, Math.hypot(dx, dy)));
+  const base = Math.atan2(dy, dx);
+  // Law of cosines for the angle at the root and at the joint.
+  const atRoot = Math.acos(Math.min(1, Math.max(-1, (a * a + d * d - b * b) / (2 * a * d || 1))));
+  const atJoint = Math.acos(Math.min(1, Math.max(-1, (a * a + b * b - d * d) / (2 * a * b || 1))));
+  const upper = base - bend * atRoot;
+  const lower = bend * (Math.PI - atJoint);
+  const joint: [number, number] = [root[0] + a * Math.cos(upper), root[1] + a * Math.sin(upper)];
+  const end: [number, number] = [joint[0] + b * Math.cos(upper + lower), joint[1] + b * Math.sin(upper + lower)];
+  const deg = 180 / Math.PI;
+  return { upper: upper * deg, lower: lower * deg, joint, end };
+}

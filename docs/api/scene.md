@@ -556,6 +556,7 @@ box({ effects: [glow({ radius: 24 }), vignette(), grain()] }, [...])
 | `glow({ radius?, intensity?, threshold? })` | A soft glow around the bright parts |
 | `vignette({ amount?, softness?, color? })` | Darker corners |
 | `chromaticAberration({ amount? })` | Color fringes toward the edges, in pixels |
+| `lensDistortion({ amount? })` | Barrel (positive, default 0.15) or pincushion (negative) distortion like a wide or long lens, cropped so the corners stay filled |
 | `halftone({ size?, angle? })`, `pixelate({ size? })`, `sharpen({ amount? })` |  |
 
 `glass: true` (or `glass: { blur?, refraction?, edge?, highlight?, dispersion?, tint? }`) turns a node into
@@ -850,7 +851,9 @@ depth; `backface: 'hidden'` hides an item whose back faces the camera. Things be
 
 The camera has `fov` (default 40 degrees), `tilt` (looking down, positive, or up), `pan`, `roll`, `target` and
 `distance`. By default the plane z = 0 appears at its true size. `cameraAngles` has film's angle presets:
-`overhead`, `high`, `eyeLevel`, `low` and `undershot`. Sorting is by each item's center, so large items that cross
+`overhead`, `high`, `eyeLevel`, `low` and `undershot`. For depth of field, set `focus` (the distance from the
+camera that is sharp, in pixels; the default camera is about `height / 2 / tan(20°)` from z = 0) and `aperture`
+(blur in pixels at twice or half that distance, default 20). Sorting is by each item's center, so large items that cross
 each other can overlap wrongly.
 
 Any node also accepts `transform: { matrix }`, a 4×4 row-major matrix applied as is.
@@ -867,7 +870,8 @@ scatter(40, { area: { width: 1920, height: 1080 }, spacing: 80, seed: 'stars' })
 random points in an `area` (at least `spacing` apart when possible), evenly along a `path`, or on a `grid` with
 `columns`. Each point has `x`, `y`, `index`, `angle` (the path's direction, or a random angle) and a seeded
 `random` number for varying copies. `lookAt(from, to)` is the rotation in degrees that points from one point to
-another.
+another. `ik2(root, target, [upper, lower], bend?)` solves a two-bone chain (an arm or leg in a 2D rig): it returns
+the `upper` and `lower` bone angles in degrees and the `joint` and `end` points.
 
 ### `stroke`
 

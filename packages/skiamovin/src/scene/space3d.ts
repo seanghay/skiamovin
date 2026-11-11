@@ -61,6 +61,12 @@ export interface Camera3D {
   target?: readonly [number, number, number];
   /** Distance from the target. Default: where the plane z = 0 appears at its true size. */
   distance?: number;
+  /**
+   * Depth of field for `space3d`: the distance from the camera, in pixels, that is in focus. Things nearer or
+   * farther blur more the larger the `aperture` (default 20 pixels of blur at twice or half the focus distance).
+   */
+  focus?: number;
+  aperture?: number;
 }
 
 export interface Item3D {
@@ -162,10 +168,22 @@ export function space3d(
     if (p.it.backface === 'hidden' && !p.facing) continue;
     // Divide by depth through the matrix's last row, as Skia's M44 does for perspective.
     const m = mul(project, p.eye);
+    const node = {
+      ...p.it.node,
+      style: { ...p.it.node.style, position: 'absolute' as const, inset: { left: 0, top: 0 } },
+    };
+    const placedNode = box(
+      { position: 'absolute', inset: { left: 0, top: 0 }, transformOrigin: [0, 0], transform: { matrix: m } },
+      [node],
+    );
+    // Blur on screen grows with distance from the focus plane. It's applied after projection, in screen space,
+    // because image filters don't follow a perspective transform.
+    const blur =
+      camera.focus === undefined ? 0 : ((camera.aperture ?? 20) * Math.abs(p.depth - camera.focus)) / p.depth;
     children.push(
-      box({ position: 'absolute', inset: { left: 0, top: 0 }, transformOrigin: [0, 0], transform: { matrix: m } }, [
-        { ...p.it.node, style: { ...p.it.node.style, position: 'absolute', inset: { left: 0, top: 0 } } },
-      ]),
+      blur > 0.25
+        ? box({ position: 'absolute', inset: { left: 0, top: 0 }, size: { width, height }, blur }, [placedNode])
+        : placedNode,
     );
   }
   return box({ size: { width, height }, ...style }, children);

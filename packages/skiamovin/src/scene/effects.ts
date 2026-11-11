@@ -12,7 +12,8 @@ export type Effect =
   | { kind: 'vignette'; amount: number; softness: number; color: Color }
   | { kind: 'halftone'; size: number; angle: number }
   | { kind: 'pixelate'; size: number }
-  | { kind: 'sharpen'; amount: number };
+  | { kind: 'sharpen'; amount: number }
+  | { kind: 'lensDistortion'; amount: number };
 
 /** Film grain. `amount` 0..1 (default 0.03), `size` in pixels. New grain every frame unless `animated: false`. */
 export function grain(options: { amount?: number; size?: number; seed?: number; animated?: boolean } = {}): Effect {
@@ -36,6 +37,10 @@ export function glow(options: { radius?: number; intensity?: number; threshold?:
 /** Color fringes toward the edges, like a lens. `amount` in pixels at the corners. */
 export function chromaticAberration(options: { amount?: number } = {}): Effect {
   return { kind: 'chromaticAberration', amount: options.amount ?? 3 };
+}
+/** Barrel (positive) or pincushion (negative) distortion, like a wide or long lens. `amount` about -0.5..0.5. */
+export function lensDistortion(options: { amount?: number } = {}): Effect {
+  return { kind: 'lensDistortion', amount: options.amount ?? 0.15 };
 }
 /** Darkens the corners. */
 export function vignette(options: { amount?: number; softness?: number; color?: Color } = {}): Effect {
@@ -82,6 +87,15 @@ const SOURCES: Record<string, string> = {
       float2 o = d * amount;
       half4 c = src.eval(p);
       return half4(src.eval(p + o).r, c.g, src.eval(p - o).b, c.a);
+    }`,
+  lensDistortion: `
+    uniform shader src; uniform float2 size; uniform float amount;
+    half4 main(float2 p) {
+      float2 d = (p - size * 0.5) / (size * 0.5);
+      float r2 = dot(d, d);
+      // Pull the edges in for barrel distortion, scaled so the corners stay in frame.
+      float2 q = d * (1 + amount * r2) / (1 + max(amount, 0) * 2);
+      return src.eval(q * size * 0.5 + size * 0.5);
     }`,
   vignette: `
     uniform shader src; uniform float2 size; uniform float amount, softness; uniform half4 color;
@@ -192,6 +206,9 @@ export function buildEffects(
         f = keep(
           imageFilters.runtimeShader(program('chromaticAberration'), 'src', { size: [w, h], amount: e.amount }, f),
         );
+        break;
+      case 'lensDistortion':
+        f = keep(imageFilters.runtimeShader(program('lensDistortion'), 'src', { size: [w, h], amount: e.amount }, f));
         break;
       case 'vignette':
         f = keep(

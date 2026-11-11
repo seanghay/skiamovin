@@ -77,3 +77,19 @@ test('space3d: a positive tilt looks down from above', async () => {
   assert.equal(red(level), 0);
   assert.ok(red(above) > 500, `${red(above)}`);
 });
+
+test('space3d: depth of field blurs what is out of focus', async () => {
+  await init();
+  // The camera is about 412 px from z = 0 at the default field of view.
+  const sharpness = async (focus: number) => {
+    const px = await frame([{ node: card('#ff0000') }], { focus, aperture: 30 });
+    let edge = 0;
+    for (let x = 0; x < W; x++) {
+      const v = at(px, x, H / 2)[0]!;
+      if (v > 10 && v < 245) edge++;
+    }
+    return edge;
+  };
+  assert.ok((await sharpness(412)) <= 2, 'in focus');
+  assert.ok((await sharpness(150)) > 10, 'out of focus');
+});
