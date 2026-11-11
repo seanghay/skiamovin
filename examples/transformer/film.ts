@@ -70,11 +70,11 @@ export const T = {
   embed: 17,
   attend: 26,
   rope: 39,
-  scores: 53,
-  layers: 64,
-  predict: 76,
-  end: 87,
-  total: 92,
+  scores: 56,
+  layers: 67,
+  predict: 79,
+  end: 90,
+  total: 95,
 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -293,12 +293,14 @@ function cameraAt(t: number) {
       { time: T.embed + 1.5, camera: { x: A.x, y: A.y + 230, zoom: 1.0 } },
       { time: T.attend - 0.5, camera: { x: A.x + 60, y: A.y + 250, zoom: 1.0 } },
       { time: T.attend + 1.5, camera: { x: D.x, y: D.y - 60, zoom: 0.92 } },
-      { time: T.rope - 1, camera: { x: D.x, y: D.y - 60, zoom: 0.92 } },
-      // Dive toward "it", then down to the dials below it.
-      { time: T.rope + 0.8, camera: { x: SENT[IT]!.center, y: D.y + 20, zoom: 2.6 } },
-      { time: T.rope + 2.0, camera: { x: E.x, y: E.y - 120, zoom: 0.95 } },
-      { time: T.rope + 6, camera: { x: E.x, y: E.y + 150, zoom: 1.05 } },
-      { time: T.scores - 0.5, camera: { x: E.x, y: E.y + 150, zoom: 1.05 } },
+      { time: T.rope - 0.8, camera: { x: D.x, y: D.y - 60, zoom: 0.92 } },
+      // Down to RoPE: first the word-order problem and the dials, then the big dial, then the clock hands.
+      { time: T.rope + 1.2, camera: { x: E.x, y: E.y - 220, zoom: 1.05 } },
+      { time: T.rope + 8.0, camera: { x: E.x, y: E.y - 220, zoom: 1.05 } },
+      { time: T.rope + 9.0, camera: { x: E.x - 230, y: E.y + 300, zoom: 1.08 } },
+      { time: T.rope + 12.6, camera: { x: E.x - 230, y: E.y + 300, zoom: 1.08 } },
+      { time: T.rope + 13.6, camera: { x: E.x + 470, y: E.y + 300, zoom: 1.04 } },
+      { time: T.scores - 0.5, camera: { x: E.x + 470, y: E.y + 300, zoom: 1.04 } },
       { time: T.scores + 1.8, camera: { x: F.x, y: F.y, zoom: 1.0 } },
       { time: T.layers, camera: { x: F.x, y: F.y, zoom: 1.0 } },
       { time: T.predict - 1, camera: { x: F.x, y: F.y, zoom: 1.0 } },
@@ -607,7 +609,7 @@ function attentionSection(t: number, s: (typeof STRINGS)[Lang]): Child {
     const h = 50 + Math.abs(xa - xb) * 0.3;
     return `M${xa} ${top - 8} Q${(xa + xb) / 2} ${top - 8 - h * 2} ${xb} ${top - 8}`;
   };
-  const fadeOut = 1 - fade(t, T.rope + 1.2, 0.8);
+  const fadeOut = 1 - fade(t, T.rope + 0.2, 0.8);
   // Every token's attention, faintly: the whole web.
   if (web > 0)
     for (let r = 1; r < SENTENCE.length; r++)
@@ -712,41 +714,142 @@ function attentionSection(t: number, s: (typeof STRINGS)[Lang]): Child {
   return box({ ...abs(0, 0) }, kids);
 }
 
+// RoPE, in four beats: attention alone can't see word order; RoPE turns each vector by its position; shifting two
+// words together keeps their score; and each pair of dimensions turns at its own speed, like clock hands.
+const ORDER_WORDS = ['dog', 'bites', 'man'];
+/** Each word's own direction before RoPE, in degrees. */
+const BASE_ANGLE = [25, 95, 160];
+const ROPE_STEP = 40;
+
+/** Position of each word over the beat: "dog" and "man" swap, then swap back. */
+function wordPosition(word: number, local: number): number {
+  if (word === 1) return 1;
+  const there = ramp(local, 2.3, 3.3) - ramp(local, 6.9, 7.9);
+  return word === 0 ? 2 * there : 2 - 2 * there;
+}
+
+/** While swapping, "dog" passes over "bites" and "man" under it, so the words never pile up. */
+function swapLift(word: number, local: number): number {
+  if (word === 1) return 0;
+  const a = clamp01((local - 2.3) / 1.0),
+    b = clamp01((local - 6.9) / 1.0);
+  const arc = Math.sin(Math.PI * a) + Math.sin(Math.PI * b);
+  return (word === 0 ? -1 : 1) * 150 * arc;
+}
+
 function ropeSection(t: number, s: (typeof STRINGS)[Lang]): Child {
-  if (t < T.rope || t > T.scores + 2.5) return null;
+  if (t < T.rope - 0.5 || t > T.scores + 2.5) return null;
   const local = t - T.rope;
   const kids: Child[] = [];
-  const THETA = 24;
-  const base = 20;
-  // A dial under every token: the same arrow, turned by its position.
-  const rowY = E.y - 380;
-  SENTENCE.forEach((_, m) => {
-    const cx = SENT[m]!.center;
-    const on = fade(local, 1.1 + m * 0.08, 0.4) * (1 - fade(local, 4.4, 0.8));
-    if (on <= 0) return;
-    const turned = ramp(local, 1.6 + m * 0.1, 2.8 + m * 0.1);
+  const size = 46;
+  const SLOT = 300;
+  const rowY = E.y - 360;
+  const slotX = (p: number) => E.x + (p - 1) * SLOT;
+  const beat1 = fade(local, 0.6, 0.5) * (1 - fade(local, 8.6, 0.8));
+
+  // Beat 1 and 2: three words, their attention arcs, and later a dial under each.
+  if (beat1 > 0) {
+    const x = ORDER_WORDS.map((_, w) => slotX(wordPosition(w, local)));
+    const lift = ORDER_WORDS.map((_, w) => swapLift(w, local));
+    const pairs: [number, number, number][] = [
+      [0, 1, 0.6],
+      [1, 2, 0.5],
+      [0, 2, 0.3],
+    ];
+    for (const [a, b, w] of pairs) {
+      const xa = x[a]!,
+        xb = x[b]!;
+      const h = 40 + Math.abs(xa - xb) * 0.28;
+      kids.push(
+        path(`M${xa} ${rowY - 10 + lift[a]!} Q${(xa + xb) / 2} ${rowY - 10 - h * 2} ${xb} ${rowY - 10 + lift[b]!}`, {
+          ...abs(0, 0),
+          size: { width: 1, height: 1 },
+          stroke: C.k,
+          strokeWidth: 2 + 10 * w,
+          strokeCap: 'round',
+          fill: null,
+          opacity: beat1 * 0.75,
+          trim: { end: ramp(local, 1.0, 1.9) },
+        }),
+      );
+    }
+    ORDER_WORDS.forEach((word, w) => {
+      const tok = { text: word, id: 0 };
+      const width = word.length * size * ADV + 40;
+      kids.push(
+        box(
+          {
+            ...abs(x[w]! - width / 2, rowY + lift[w]!),
+            opacity: beat1,
+            transform: { scale: pop(t, T.rope + 0.3 + w * 0.08) },
+          },
+          [tile(tok, { size, pad: 20, split: 1 })],
+        ),
+      );
+    });
+    // "Same scores" after the swap, then RoPE's dials.
     kids.push(
-      dial(cx, rowY, 52, on),
-      arrow(cx, rowY, base + m * THETA * turned, 44, m === IT ? C.warm : C.q, 4, on),
-      box({ ...abs(cx - 40, rowY + 66), size: { width: 80 }, justifyContent: 'center', opacity: on }, [
-        text(`m=${m}`, { fontFamily: MONO, fontSize: 20, color: C.muted }),
-      ]),
+      box(
+        {
+          ...abs(E.x - 400, rowY + 110),
+          size: { width: 800 },
+          justifyContent: 'center',
+          opacity: window_(local, 3.4, 5.0, 0.4),
+        },
+        [text(s.sameScores, { fontFamily: SANS, fontSize: 32, fontWeight: 600, color: C.k })],
+      ),
     );
-  });
-  // The big dial: a query at position m and a key at position n keep the same angle when both move.
-  const big = { x: E.x - 330, y: E.y + 200, r: 230 };
-  const bigOn = fade(local, 4.6, 0.6) * (1 - fade(t, T.scores + 0.6, 0.8));
+    const rope = ramp(local, 5.4, 6.4);
+    const dialsOn = fade(local, 4.8, 0.5);
+    if (dialsOn > 0)
+      ORDER_WORDS.forEach((_, w) => {
+        const pos = wordPosition(w, local);
+        const cx = x[w]!,
+          cy = rowY + 250 + lift[w]!;
+        kids.push(
+          dial(cx, cy, 82, dialsOn * beat1),
+          arrow(cx, cy, BASE_ANGLE[w]! + pos * ROPE_STEP * rope, 70, [C.q, C.v, C.k][w]!, 6, dialsOn * beat1),
+          box(
+            {
+              ...abs(cx - 90, cy + 98),
+              size: { width: 180 },
+              justifyContent: 'center',
+              opacity: dialsOn * beat1 * rope,
+            },
+            [text(`+ ${Math.round(pos * ROPE_STEP)}°`, { fontFamily: MONO, fontSize: 24, color: C.muted })],
+          ),
+        );
+      });
+    kids.push(
+      box(
+        {
+          ...abs(E.x - 450, rowY + 470),
+          size: { width: 900 },
+          justifyContent: 'center',
+          opacity: window_(local, 7.6, 9.0, 0.4),
+        },
+        [text(s.nowDifferent, { fontFamily: SANS, fontSize: 32, fontWeight: 600, color: C.q })],
+      ),
+    );
+  }
+
+  // Beat 3: a query and a key; moving both keeps the score, moving one changes it.
+  const big = { x: E.x - 380, y: E.y + 300, r: 230 };
+  const bigOn = fade(local, 8.6, 0.6) * (1 - fade(local, 13.0, 0.6));
   if (bigOn > 0) {
-    const shift = Math.round(interpolate(local, [8.2, 10.4], [0, 4]));
-    const smooth = interpolate(local, [8.2, 10.4], [0, 4], { easing: Easing.inOutCubic });
-    const m = 2 + smooth,
-      n = 5 + smooth;
-    const qa = base + 10 + m * THETA,
-      ka = base - 40 + n * THETA;
+    const THETA = 24;
+    const both = interpolate(local, [9.6, 10.6], [0, 4], { easing: Easing.inOutCubic });
+    const onlyK = interpolate(local, [11.7, 12.5], [0, 2], { easing: Easing.inOutCubic });
+    const m = 2 + both,
+      n = 5 + both + onlyK;
+    const base = 10;
+    const qa = base + m * THETA,
+      ka = base + n * THETA;
+    const score = Math.cos(((n - m) * THETA * Math.PI) / 180);
+    const changed = onlyK > 0.05;
     kids.push(dial(big.x, big.y, big.r, bigOn, 24));
-    // The arc between them: the angle that sets their score.
-    const a0 = (Math.min(qa, ka) * Math.PI) / 180,
-      a1 = (Math.max(qa, ka) * Math.PI) / 180;
+    const a0 = (qa * Math.PI) / 180,
+      a1 = (ka * Math.PI) / 180;
     const rr = 120;
     kids.push(
       path(
@@ -755,50 +858,112 @@ function ropeSection(t: number, s: (typeof STRINGS)[Lang]): Child {
           ...abs(0, 0),
           size: { width: 1, height: 1 },
           stroke: C.warm,
-          strokeWidth: 4,
+          strokeWidth: 5,
           fill: null,
-          opacity: bigOn * fade(local, 6.2),
+          opacity: bigOn * fade(local, 9.4),
         },
       ),
-      arrow(big.x, big.y, qa, 200, C.q, 9, bigOn * fade(local, 5.0)),
-      arrow(big.x, big.y, ka, 200, C.k, 9, bigOn * fade(local, 5.6)),
+      arrow(big.x, big.y, qa, 205, C.q, 10, bigOn),
+      arrow(big.x, big.y, ka, 205, C.k, 10, bigOn),
       box(
         {
-          ...abs(big.x + big.r + 40, big.y - 120),
-          size: { width: 330 },
+          ...abs(big.x + big.r + 50, big.y - 150),
+          size: { width: 420 },
           flexDirection: 'column',
-          gap: 18,
-          opacity: bigOn * fade(local, 5.2),
+          gap: 14,
+          opacity: bigOn,
         },
         [
-          text([span('q ', { color: C.q }), span(`m = ${(2 + shift).toFixed(0)}`, { color: C.text })], {
+          text([span('q  ', { color: C.q }), span(`m = ${Math.round(m)}`, { color: C.text })], {
             fontFamily: MONO,
-            fontSize: 34,
+            fontSize: 36,
           }),
-          text([span('k ', { color: C.k }), span(`n = ${(5 + shift).toFixed(0)}`, { color: C.text })], {
+          text([span('k  ', { color: C.k }), span(`n = ${Math.round(n)}`, { color: C.text })], {
             fontFamily: MONO,
-            fontSize: 34,
+            fontSize: 36,
           }),
-          text([span('n − m = 3', { color: C.warm })], { fontFamily: MONO, fontSize: 34, opacity: fade(local, 6.4) }),
+          text([span(`n − m = ${Math.round(n - m)}`, { color: C.warm })], {
+            fontFamily: MONO,
+            fontSize: 36,
+            opacity: fade(local, 9.4),
+          }),
+          box(
+            {
+              margin: { top: 14 },
+              padding: [12, 18],
+              borderRadius: 14,
+              background: changed ? 'rgba(219,39,119,0.08)' : 'rgba(8,145,178,0.08)',
+              border: 1.5,
+              borderColor: changed ? C.k : C.q,
+              opacity: fade(local, 9.6),
+            },
+            [
+              text(`q · k = ${score.toFixed(2)}`, {
+                fontFamily: MONO,
+                fontSize: 36,
+                fontWeight: 700,
+                color: changed ? C.k : C.q,
+                fontFeatures: { tnum: 1 },
+              }),
+            ],
+          ),
+          text(changed ? s.scoreChanges : s.scoreSame, {
+            fontFamily: SANS,
+            fontSize: 26,
+            color: C.muted,
+            size: { width: 420 },
+            opacity: fade(local, 10.2),
+          }),
         ],
       ),
     );
-    // Pairs of dimensions turn at different speeds.
-    const speeds = [40, 13, 3];
-    speeds.forEach((sp, i) => {
-      const x = E.x + 330 + i * 175,
-        y = E.y + 200;
-      const on = bigOn * fade(local, 10.6 + i * 0.25, 0.5);
-      if (on <= 0) return;
-      const pos = interpolate(local, [11, 14], [0, 10]);
+  }
+
+  // Beat 4: pairs of dimensions turn at very different speeds (Llama 3 uses base 500,000 and 64 pairs per head).
+  const clocksOn = fade(local, 13.2, 0.6) * (1 - fade(t, T.scores + 0.4, 0.8));
+  if (clocksOn > 0) {
+    const pos = interpolate(local, [13.9, 16.6], [0, 20]);
+    const pairs = [0, 16, 32, 63];
+    const cy = E.y + 300;
+    pairs.forEach((i, j) => {
+      const perToken = (500000 ** ((-2 * i) / 128) * 180) / Math.PI;
+      const cx = E.x + 160 + j * 230;
+      const on = clocksOn * fade(local, 13.3 + j * 0.15, 0.4);
       kids.push(
-        dial(x, y, 70, on),
-        arrow(x, y, 90 - pos * sp, 58, [C.q, C.v, C.k][i]!, 5, on),
-        box({ ...abs(x - 90, y + 86), size: { width: 180 }, justifyContent: 'center', opacity: on }, [
-          text(s.pairs[i]!, { fontFamily: SANS, fontSize: 22, color: C.muted, textAlign: 'center' }),
-        ]),
+        dial(cx, cy, 90, on),
+        arrow(cx, cy, 90 - pos * perToken, 74, [C.q, C.v, C.k, C.warm][j]!, 6, on),
+        box(
+          {
+            ...abs(cx - 110, cy + 108),
+            size: { width: 220 },
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            opacity: on,
+          },
+          [
+            text(`${s.pair} ${i + 1}`, { fontFamily: SANS, fontSize: 24, fontWeight: 600, color: C.text }),
+            text(
+              `${perToken >= 10 ? perToken.toFixed(0) : perToken >= 1 ? perToken.toFixed(1) : perToken >= 0.01 ? perToken.toFixed(2) : perToken.toPrecision(1)}° / token`,
+              {
+                fontFamily: MONO,
+                fontSize: 20,
+                color: C.muted,
+              },
+            ),
+          ],
+        ),
       );
     });
+    kids.push(
+      box(
+        { ...abs(E.x + 160 - 90, cy - 230), flexDirection: 'row', alignItems: 'center', gap: 40, opacity: clocksOn },
+        [
+          math('\\theta_i = 500000^{-2i/128}', { fontSize: 40, color: C.text }),
+          text(`m = ${Math.round(pos)}`, { fontFamily: MONO, fontSize: 34, color: C.warm, fontFeatures: { tnum: 1 } }),
+        ],
+      ),
+    );
   }
   return box({ ...abs(0, 0) }, kids);
 }

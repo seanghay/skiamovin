@@ -6,7 +6,11 @@ interface Strings {
   vocab: string;
   dims: string;
   whatIsIt: string;
-  pairs: [string, string, string];
+  sameScores: string;
+  nowDifferent: string;
+  scoreSame: string;
+  scoreChanges: string;
+  pair: string;
   scoreNote: string;
   heads: string;
   headsNote: string;
@@ -28,7 +32,11 @@ export const STRINGS: Record<Lang, Strings> = {
     vocab: 'One of 128,256 tokens in Llama 3',
     dims: '4,096 numbers per token',
     whatIsIt: 'what is “it”?',
-    pairs: ['fast pair', 'slower pair', 'slowest pair'],
+    sameScores: 'Swapped, yet the same attention scores',
+    nowDifferent: 'With RoPE, “dog” first and “dog” last are different',
+    scoreSame: 'Both moved by 4: the score stays the same',
+    scoreChanges: 'Only k moved: the distance changed, so the score did too',
+    pair: 'Pair',
     scoreNote: 'Rotating both by position leaves only the distance n − m in the score.',
     heads: '32 heads per layer',
     headsNote: 'Each head learns its own pattern',
@@ -55,15 +63,16 @@ export const STRINGS: Record<Lang, Strings> = {
       [26.4, 29.8, 'But a word’s meaning depends on the words around it.'],
       [29.8, 34.4, 'Attention lets each token look back at the tokens before it.'],
       [34.4, 38.6, 'To understand “it”, the model looks mostly at “animal”.'],
-      [39.4, 43.6, 'Attention alone doesn’t know word order. RoPE fixes that.'],
-      [43.6, 48.2, 'It rotates each query and key by the token’s position.'],
-      [48.2, 52.6, 'Move two tokens together and their angle stays the same: only distance matters.'],
-      [53.2, 57.8, 'Query times key gives a score; softmax turns scores into weights.'],
-      [57.8, 63.6, 'Tokens can only look back, and many heads do this in parallel.'],
-      [64.4, 69.4, 'Attention and a feed-forward network make one layer.'],
-      [69.4, 75.4, 'Llama 3 8B stacks 32 of them, each refining the vectors.'],
-      [76.4, 81.2, 'At the end, every token in the vocabulary gets a probability.'],
-      [81.2, 86.6, 'Pick one, add it to the text, and run again. One token at a time.'],
+      [39.4, 43.4, 'But attention alone can’t see word order: “dog bites man” scores like “man bites dog”.'],
+      [43.4, 47.8, 'RoPE fixes this: it turns each query and key by an angle set by its position.'],
+      [47.8, 51.8, 'Move two words together and their angle stays the same, so the score depends only on distance.'],
+      [51.8, 55.8, 'Each of the 64 pairs in a head turns at its own speed, like the hands of a clock.'],
+      [56.2, 60.8, 'Query times key gives a score; softmax turns scores into weights.'],
+      [60.8, 66.6, 'Tokens can only look back, and many heads do this in parallel.'],
+      [67.4, 72.4, 'Attention and a feed-forward network make one layer.'],
+      [72.4, 78.4, 'Llama 3 8B stacks 32 of them, each refining the vectors.'],
+      [79.4, 84.2, 'At the end, every token in the vocabulary gets a probability.'],
+      [84.2, 89.6, 'Pick one, add it to the text, and run again. One token at a time.'],
     ],
   },
   km: {
@@ -71,7 +80,11 @@ export const STRINGS: Record<Lang, Strings> = {
     vocab: 'token មួយក្នុងចំណោម 128,256 របស់ Llama 3',
     dims: 'token នីមួយៗ មានលេខ 4,096',
     whatIsIt: 'តើ «it» សំដៅលើអ្វី?',
-    pairs: ['គូវិលលឿន', 'គូវិលយឺត', 'គូវិលយឺតបំផុត'],
+    sameScores: 'ប្តូរទីតាំង តែពិន្ទុ attention នៅដដែល',
+    nowDifferent: 'ជាមួយ RoPE «dog» នៅខាងមុខ និង «dog» នៅខាងក្រោយ ខុសគ្នា',
+    scoreSame: 'ផ្លាស់ទីទាំងពីរ 4 ជំហាន៖ ពិន្ទុនៅដដែល',
+    scoreChanges: 'ផ្លាស់ទីតែ k៖ ចម្ងាយប្តូរ ពិន្ទុក៏ប្តូរដែរ',
+    pair: 'គូទី',
     scoreNote: 'ពេលបង្វិលទាំងពីរតាមទីតាំង ពិន្ទុនៅសល់តែចម្ងាយ n − m ប៉ុណ្ណោះ។',
     heads: 'head ចំនួន 32 ក្នុងមួយស្រទាប់',
     headsNote: 'head នីមួយៗ រៀនលំនាំផ្ទាល់ខ្លួន',
@@ -98,15 +111,16 @@ export const STRINGS: Record<Lang, Strings> = {
       [26.4, 29.8, 'ប៉ុន្តែ អត្ថន័យរបស់ពាក្យ អាស្រ័យលើពាក្យនៅជុំវិញវា។'],
       [29.8, 34.4, 'Attention អនុញ្ញាតឱ្យ token នីមួយៗ មើលទៅ token មុនៗ។'],
       [34.4, 38.6, 'ដើម្បីយល់ពាក្យ «it» ម៉ូដែលផ្តោតភាគច្រើនទៅលើ «animal»។'],
-      [39.4, 43.6, 'Attention តែឯង មិនដឹងលំដាប់ពាក្យទេ។ RoPE ដោះស្រាយបញ្ហានេះ។'],
-      [43.6, 48.2, 'វាបង្វិល query និង key នីមួយៗ តាមទីតាំងរបស់ token។'],
-      [48.2, 52.6, 'ផ្លាស់ទី token ពីរទៅជាមួយគ្នា មុំរវាងវានៅដដែល៖ មានតែចម្ងាយទេដែលសំខាន់។'],
-      [53.2, 57.8, 'query គុណនឹង key ផ្តល់ពិន្ទុ ហើយ softmax ប្តូរពិន្ទុទៅជាទម្ងន់។'],
-      [57.8, 63.6, 'token មើលបានតែទៅក្រោយ ហើយ head ជាច្រើនធ្វើការនេះស្របគ្នា។'],
-      [64.4, 69.4, 'Attention និង feed-forward network ផ្សំគ្នាជាស្រទាប់មួយ។'],
-      [69.4, 75.4, 'Llama 3 8B មានស្រទាប់បែបនេះ 32 ជាន់ ដែលនីមួយៗកែលម្អវ៉ិចទ័របន្តិចម្តងៗ។'],
-      [76.4, 81.2, 'នៅចុងបញ្ចប់ token ទាំងអស់ក្នុងវាក្យសព្ទ ទទួលបានប្រូបាប៊ីលីតេ។'],
-      [81.2, 86.6, 'ជ្រើសយកមួយ បន្ថែមទៅអត្ថបទ ហើយដំណើរការម្តងទៀត។ ម្តងមួយ token។'],
+      [39.4, 43.4, 'ប៉ុន្តែ attention តែឯង មិនដឹងលំដាប់ពាក្យទេ៖ «dog bites man» ទទួលពិន្ទុដូច «man bites dog»។'],
+      [43.4, 47.8, 'RoPE ដោះស្រាយបញ្ហានេះ៖ វាបង្វិល query និង key នីមួយៗ តាមមុំដែលកំណត់ដោយទីតាំង។'],
+      [47.8, 51.8, 'ផ្លាស់ទីពាក្យពីរទៅជាមួយគ្នា មុំរវាងវានៅដដែល ដូច្នេះពិន្ទុអាស្រ័យតែលើចម្ងាយ។'],
+      [51.8, 55.8, 'គូទាំង 64 ក្នុង head មួយ វិលក្នុងល្បឿនខុសៗគ្នា ដូចទ្រនិចនាឡិកា។'],
+      [56.2, 60.8, 'query គុណនឹង key ផ្តល់ពិន្ទុ ហើយ softmax ប្តូរពិន្ទុទៅជាទម្ងន់។'],
+      [60.8, 66.6, 'token មើលបានតែទៅក្រោយ ហើយ head ជាច្រើនធ្វើការនេះស្របគ្នា។'],
+      [67.4, 72.4, 'Attention និង feed-forward network ផ្សំគ្នាជាស្រទាប់មួយ។'],
+      [72.4, 78.4, 'Llama 3 8B មានស្រទាប់បែបនេះ 32 ជាន់ ដែលនីមួយៗកែលម្អវ៉ិចទ័របន្តិចម្តងៗ។'],
+      [79.4, 84.2, 'នៅចុងបញ្ចប់ token ទាំងអស់ក្នុងវាក្យសព្ទ ទទួលបានប្រូបាប៊ីលីតេ។'],
+      [84.2, 89.6, 'ជ្រើសយកមួយ បន្ថែមទៅអត្ថបទ ហើយដំណើរការម្តងទៀត។ ម្តងមួយ token។'],
     ],
   },
 };
