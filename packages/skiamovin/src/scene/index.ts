@@ -141,6 +141,8 @@ export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from 
 export { PhysicsWorld, physics } from './simulation.ts';
 export type { StatesOptions } from './states.ts';
 export { states } from './states.ts';
+export type { StrokeOptions } from './stroke.ts';
+export { stroke } from './stroke.ts';
 export { tailwindTheme } from './tailwind-theme.ts';
 export type { RangeShape, TextAnimatorOptions } from './text-effects.ts';
 export { counter, graphemeCount, scramble, textAnimator } from './text-effects.ts';

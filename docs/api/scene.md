@@ -749,6 +749,19 @@ function, or stagger options with `each`. `repeat: -1` repeats forever. Values m
 (interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their `set` value, or to `0`
 (`1` for `opacity` and `scale`).
 
+### `stroke`
+
+```ts
+stroke('M20 200 C120 20 220 260 320 120', { size: 16, taper: [40, 90], color: '#1e293b', draw: t });
+stroke(points, { size: 12 }); // [x, y] or [x, y, pressure] points
+```
+
+A hand-drawn stroke, like a brush in a drawing app, from [perfect-freehand](https://github.com/steveruizok/perfect-freehand)
+(MIT). Its width follows pressure (the third number of each point) or, without pressure, drawing speed, and its
+ends can taper. Give it points, a `Path` or SVG path data to draw along. `draw` reveals it from 0 to 1 as if being
+drawn. Options: `size` (default 8), `thinning`, `smoothing`, `streamline` (0.5 each), `taper` (pixels, or
+`[start, end]`) and `color`.
+
 ### `morphPath` and `alongPath`
 
 ```ts

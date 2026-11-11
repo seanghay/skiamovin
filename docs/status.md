@@ -34,6 +34,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Motion blur | `motionBlur: { shutter, samples }` on a composition: averages moments within the shutter in half-float linear light |
 | Film camera | `shot()` sizes with rule-of-thirds placement, `cameraMove()`, `handheld()`, `edit()` between cameras, and 'dissolve', 'fade' and 'wipe' transition names |
 | Loudness and delivery | `audio.loudness` in `Render` normalizes the mix to a LUFS target (BS.1770 / EBU R128, gated); `deliveryPresets` for YouTube, Instagram, TikTok and broadcast |
+| Hand-drawn strokes | `stroke()`: variable-width, tapered strokes from points with pressure or along a path, drawn on over time |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

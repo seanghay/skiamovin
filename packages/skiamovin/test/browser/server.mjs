@@ -35,6 +35,7 @@ const BARE = {
   '#loader': '/pkg/dist/native/loader-wasm.js',
   mediabunny: '/modules/mediabunny/dist/bundles/mediabunny.mjs',
   'pele/lazy': '/modules/pele/dist/esm/lazy.js',
+  'perfect-freehand': '/modules/perfect-freehand/dist/esm/index.mjs',
 };
 const rewrite = (src) =>
   src.replace(/(\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"./][^'"]*)\2/g, (m, pre, q, spec) =>

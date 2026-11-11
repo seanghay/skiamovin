@@ -60,6 +60,7 @@
   "dependencies": {
     "gl-transitions": "^3.2.0",
     "pele": "^1.13.0",
+    "perfect-freehand": "^1.2.3",
     "shiki": "^4.6.0"
   }
 }
