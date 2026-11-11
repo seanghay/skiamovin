@@ -1,5 +1,6 @@
 // Animation helpers. All are pure functions of time, so frames can be rendered in any order.
 import { Color as C, type Color, toColor4f } from '../core/color.ts';
+import { ContourMeasureIter, Path } from '../core/skia.ts';
 
 export type EasingFunction = (t: number) => number;
 
@@ -81,8 +82,107 @@ const bounceOut: EasingFunction = (t) => {
   return n * u * u + 0.984375;
 };
 
+const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+/** Manim's default rate function: an S-curve that starts and ends with zero speed. */
+function smooth(t: number, inflection = 10): number {
+  const error = sigmoid(-inflection / 2);
+  return Math.min(1, Math.max(0, (sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error)));
+}
+
+/** Straight lines between points, like CSS `linear()`. A point is a value, or `[value, at]` with `at` in 0..1. */
+function piecewise(points: readonly (number | readonly [number, number])[]): EasingFunction {
+  if (points.length < 2) throw new RangeError('Easing.piecewise: needs at least 2 points');
+  const ys = points.map((p) => (typeof p === 'number' ? p : p[0]));
+  const xs: (number | undefined)[] = points.map((p) => (typeof p === 'number' ? undefined : p[1]));
+  xs[0] ??= 0;
+  xs[xs.length - 1] ??= 1;
+  // Points without a position are spread evenly between their neighbours, as in CSS.
+  for (let i = 1; i < xs.length; i++) {
+    if (xs[i] !== undefined) continue;
+    let j = i;
+    while (xs[j] === undefined) j++;
+    const a = xs[i - 1]!,
+      b = xs[j]!;
+    for (let k = i; k < j; k++) xs[k] = a + ((b - a) * (k - i + 1)) / (j - i + 1);
+  }
+  const x = xs as number[];
+  return (t) => {
+    if (t <= x[0]!) return ys[0]!;
+    for (let i = 1; i < x.length; i++)
+      if (t <= x[i]!) {
+        const span = x[i]! - x[i - 1]!;
+        return span > 0 ? ys[i - 1]! + ((ys[i]! - ys[i - 1]!) * (t - x[i - 1]!)) / span : ys[i]!;
+      }
+    return ys[ys.length - 1]!;
+  };
+}
+
+/** An ease drawn as an SVG path from (0, 0) to (1, 1), sampled into a table the first time it's used. */
+function customEase(d: string, samples = 512): EasingFunction {
+  let xs: Float64Array | null = null,
+    ys: Float64Array | null = null;
+  const build = () => {
+    const path = Path.fromSVG(d);
+    if (!path) throw new SyntaxError(`Easing.custom: invalid path '${d}'`);
+    const px: number[] = [],
+      py: number[] = [];
+    using it = new ContourMeasureIter(path, false);
+    for (let m = it.next(); m; m = it.next()) {
+      const len = m.length();
+      for (let i = 0; i <= samples; i++) {
+        const pt = m.getPosTan((len * i) / samples);
+        if (pt) {
+          px.push(pt[0]);
+          py.push(pt[1]);
+        }
+      }
+      m.delete();
+    }
+    path.delete();
+    xs = Float64Array.from(px);
+    ys = Float64Array.from(py);
+  };
+  return (t) => {
+    if (!xs) build();
+    const x = xs!,
+      y = ys!;
+    if (t <= x[0]!) return y[0]!;
+    if (t >= x[x.length - 1]!) return y[y.length - 1]!;
+    let lo = 0,
+      hi = x.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (x[mid]! <= t) lo = mid;
+      else hi = mid;
+    }
+    const span = x[hi]! - x[lo]!;
+    return span > 0 ? y[lo]! + ((y[hi]! - y[lo]!) * (t - x[lo]!)) / span : y[hi]!;
+  };
+}
+
 export const Easing = {
   linear: ((t) => t) as EasingFunction,
+  /** Manim's S-curve (the default in Manim). */
+  smooth: ((t) => smooth(t)) as EasingFunction,
+  /** Goes to 1 at the midpoint and back to 0, smoothly. */
+  thereAndBack: ((t) => smooth(t < 0.5 ? 2 * t : 2 * (1 - t))) as EasingFunction,
+  /** Runs `ease` only between `a` and `b`, holding its start before and its end after. */
+  squish(ease: EasingFunction, a: number, b: number): EasingFunction {
+    return (t) => (t <= a ? ease(0) : t >= b ? ease(1) : ease((t - a) / (b - a)));
+  },
+  piecewise,
+  custom: customEase,
+  /** A jittery ease that still starts at 0 and ends at 1. Seeded, so it's the same every render. */
+  irregular(seed: string | number, options: { points?: number; strength?: number } = {}): EasingFunction {
+    const n = Math.max(2, options.points ?? 20);
+    const strength = options.strength ?? 0.5;
+    const pts = Array.from({ length: n + 1 }, (_, i) => {
+      if (i === 0 || i === n) return i / n;
+      return Math.min(1, Math.max(0, i / n + (random(`${seed}:${i}`) - 0.5) * (strength / n) * 2));
+    });
+    return piecewise(pts);
+  },
   in: inF,
   out: outF,
   inOut: inOutF,
@@ -97,6 +197,7 @@ export const Easing = {
   elastic,
   bounce: ((t: number) => 1 - bounceOut(1 - t)) as EasingFunction,
   bezier,
+  cubicBezier: bezier,
   steps(n: number): EasingFunction {
     return (t) => Math.min(1, Math.floor(t * n) / n);
   },
@@ -403,12 +504,155 @@ export function noise(seed: string | number, x: number, y = 0, z = 0): number {
   return 32 * n;
 }
 
+// Stagger
+
+export interface StaggerOptions {
+  /** Where the wave starts: an index, or 'first' (default), 'last', 'center', 'edges' or 'random'. */
+  from?: number | 'first' | 'last' | 'center' | 'edges' | 'random';
+  /** Lay the items out as `[rows, columns]` and measure distance in 2D. */
+  grid?: readonly [number, number];
+  /** With a grid, measure distance along one axis only. */
+  axis?: 'x' | 'y';
+  /** Shapes how the value grows with distance. */
+  ease?: EasingFunction;
+  /** Added to every value. */
+  start?: number;
+  /** Seed for `from: 'random'`. */
+  seed?: string | number;
+  reversed?: boolean;
+}
+
+/** `(index, count) => value`, from `stagger()`. */
+export type StaggerFunction = (index: number, count: number) => number;
+
+/**
+ * Spreads a value over items by their distance from a starting point, like anime.js's `stagger`. A number gives
+ * that much per step of distance (`stagger(0.05)` for delays); a `[from, to]` range spreads values across it.
+ */
+export function stagger(value: number | readonly [number, number], options: StaggerOptions = {}): StaggerFunction {
+  const { from = 'first', grid, axis, ease, start = 0, reversed = false } = options;
+  const cache = new Map<number, { d: Float64Array; max: number }>();
+  const distances = (count: number): { d: Float64Array; max: number } => {
+    const hit = cache.get(count);
+    if (hit) return hit;
+    const d = new Float64Array(count);
+    if (from === 'random') {
+      const order = Array.from({ length: count }, (_, i) => i).sort(
+        (a, b) => random(`${options.seed ?? 'stagger'}:${a}`) - random(`${options.seed ?? 'stagger'}:${b}`),
+      );
+      order.forEach((item, rank) => {
+        d[item] = rank;
+      });
+    } else if (grid) {
+      const [rows, cols] = grid;
+      const fi = from === 'first' ? 0 : from === 'last' ? count - 1 : typeof from === 'number' ? from : -1;
+      const fx = fi >= 0 ? fi % cols : (cols - 1) / 2;
+      const fy = fi >= 0 ? Math.floor(fi / cols) : (rows - 1) / 2;
+      for (let i = 0; i < count; i++) {
+        const dx = fx - (i % cols),
+          dy = fy - Math.floor(i / cols);
+        d[i] = axis === 'x' ? Math.abs(dx) : axis === 'y' ? Math.abs(dy) : Math.hypot(dx, dy);
+      }
+      if (from === 'edges') {
+        const max = Math.max(...d);
+        for (let i = 0; i < count; i++) d[i] = max - d[i]!;
+      }
+    } else {
+      const center = (count - 1) / 2;
+      const f = from === 'first' ? 0 : from === 'last' ? count - 1 : typeof from === 'number' ? from : center;
+      for (let i = 0; i < count; i++) d[i] = Math.abs(f - i);
+      if (from === 'edges') for (let i = 0; i < count; i++) d[i] = center - d[i]!;
+    }
+    if (reversed) {
+      const max = Math.max(...d);
+      for (let i = 0; i < count; i++) d[i] = max - d[i]!;
+    }
+    let max = 0;
+    for (const v of d) if (v > max) max = v;
+    const entry = { d, max };
+    cache.set(count, entry);
+    return entry;
+  };
+  return (index, count) => {
+    const { d, max } = distances(Math.max(1, count));
+    const dist = d[Math.min(index, d.length - 1)]!;
+    if (Array.isArray(value)) {
+      const [a, b] = value as readonly [number, number];
+      const p = max > 0 ? dist / max : 0;
+      return start + a + (b - a) * (ease ? ease(p) : p);
+    }
+    const each = value as number;
+    return start + (ease && max > 0 ? ease(dist / max) * max : dist) * each;
+  };
+}
+
+// Keyframes and expressions
+
+export interface KeyframeOptions {
+  /** Position of each keyframe in 0..1. Defaults to evenly spaced. */
+  times?: readonly number[];
+  /** One ease for every segment, or one per segment. */
+  easing?: EasingFunction | readonly EasingFunction[];
+  /** Length of the whole animation, seconds. Default 1. */
+  duration?: number;
+  delay?: number;
+}
+
+/** The value at `timestamp` of an animation through several keyframes. */
+export function keyframes(timestamp: number, values: readonly number[], options: KeyframeOptions = {}): number {
+  const n = values.length;
+  if (n === 0) throw new RangeError('keyframes: needs at least one value');
+  if (n === 1) return values[0]!;
+  const times = options.times ?? values.map((_, i) => i / (n - 1));
+  if (times.length !== n) throw new RangeError(`keyframes: got ${times.length} times for ${n} values`);
+  const duration = options.duration ?? 1;
+  const t = (timestamp - (options.delay ?? 0)) / duration;
+  return interpolate(t, times, values, { easing: options.easing });
+}
+
+/**
+ * Smooth random motion around zero, like After Effects' `wiggle()`: `freq` wiggles per second, up to `amount`
+ * either way. Seeded, so it's the same every render.
+ */
+export function wiggle(
+  timestamp: number,
+  freq: number,
+  amount: number,
+  options: { seed?: string | number; octaves?: number } = {},
+): number {
+  const octaves = Math.max(1, options.octaves ?? 1);
+  let v = 0,
+    a = 1,
+    total = 0;
+  for (let o = 0; o < octaves; o++) {
+    v += noise(options.seed ?? 'wiggle', timestamp * freq * 2 ** o, o * 31.7) * a;
+    total += a;
+    a /= 2;
+  }
+  return (v / total) * amount;
+}
+
+/** Maps a time onto a loop of `duration` seconds: 'cycle' starts over, 'pingpong' plays back and forth. */
+export function loopTime(timestamp: number, duration: number, mode: 'cycle' | 'pingpong' = 'cycle'): number {
+  if (duration <= 0) return 0;
+  const t = ((timestamp % duration) + duration) % duration;
+  if (mode === 'cycle') return t;
+  const cycle = Math.floor(timestamp / duration);
+  return cycle % 2 === 0 ? t : duration - t;
+}
+
 // Timeline
 
 type TweenValue = number | string | readonly number[];
 type Values = Record<string, TweenValue>;
 
-interface Tween {
+interface Repeat {
+  repeat: number;
+  yoyo: boolean;
+  repeatDelay: number;
+}
+
+interface Tween extends Repeat {
   target: string;
   kind: 'to' | 'from' | 'fromTo' | 'set';
   from?: Values;
@@ -419,11 +663,27 @@ interface Tween {
 }
 
 export interface TweenOptions {
+  /** Start time: seconds, a label, `'<'` (start of the previous tween), `'>'` (its end), with offsets such as `'<+0.3'`, `'>-25%'` or `'label+=1'`. */
   at?: number | string;
   duration?: number;
   easing?: EasingFunction;
-  /** Offset between consecutive targets, seconds. */
-  stagger?: number;
+  /** Delay between consecutive targets: seconds, a `stagger()` function, or stagger options with `each`. */
+  stagger?: number | StaggerFunction | (StaggerOptions & { each: number });
+  /** Extra times to play. -1 repeats forever. */
+  repeat?: number;
+  /** Play every other repeat backwards. */
+  yoyo?: boolean;
+  repeatDelay?: number;
+}
+
+export interface TimelineOptions {
+  repeat?: number;
+  yoyo?: boolean;
+  repeatDelay?: number;
+  /** Playback speed. 2 plays twice as fast. */
+  timeScale?: number;
+  /** Labels known from the start, such as named time events from `composition.meta.json`. */
+  labels?: Record<string, number>;
 }
 
 const DEFAULTS: Record<string, number> = { opacity: 1, scale: 1, scaleX: 1, scaleY: 1 };
@@ -435,20 +695,54 @@ function lerpValue(a: TweenValue, b: TweenValue, t: number): TweenValue {
   return t < 1 ? a : b;
 }
 
+/** Total length of something that plays `duration` seconds with repeats. */
+function repeatedLength(duration: number, r: Repeat): number {
+  if (r.repeat < 0) return Infinity;
+  return duration * (r.repeat + 1) + r.repeatDelay * r.repeat;
+}
+
+/** Progress (0..1) at local time `t` of something that plays `duration` seconds with repeats. */
+function repeatedProgress(t: number, duration: number, r: Repeat): number {
+  if (duration <= 0) return 1;
+  const cycle = duration + r.repeatDelay;
+  let i = Math.floor(t / cycle);
+  let within = t - i * cycle;
+  if (r.repeat >= 0 && i > r.repeat) {
+    i = r.repeat;
+    within = duration;
+  }
+  let p = Math.min(1, within / duration);
+  if (r.yoyo && i % 2 === 1) p = 1 - p;
+  return p;
+}
+
 /** A GSAP-style timeline, evaluated from the timestamp. Times are in seconds. */
 export class Timeline {
   #tweens: Tween[] = [];
+  /** Nested timelines with their own repeats or speed, evaluated on their own clock. */
+  #children: { timeline: Timeline; offset: number }[] = [];
   #labels = new Map<string, number>();
   #lastStart = 0;
   #lastEnd = 0;
+  #options: Required<Omit<TimelineOptions, 'labels'>>;
 
-  #resolveAt(at: number | string | undefined): number {
+  constructor(options: TimelineOptions = {}) {
+    this.#options = {
+      repeat: options.repeat ?? 0,
+      yoyo: options.yoyo ?? false,
+      repeatDelay: options.repeatDelay ?? 0,
+      timeScale: options.timeScale ?? 1,
+    };
+    for (const [name, at] of Object.entries(options.labels ?? {})) this.#labels.set(name, at);
+  }
+
+  #resolveAt(at: number | string | undefined, insertedDuration = 0): number {
     if (at === undefined) return this.#lastEnd;
     if (typeof at === 'number') return at;
-    const m = /^([<>]|[A-Za-z_][\w-]*)?\s*([+-]=?\s*[\d.]+)?$/.exec(at.trim());
+    const m = /^([<>]|[A-Za-z_][\w-]*)?\s*(?:([+-])?=?\s*([\d.]+)\s*(%)?)?$/.exec(at.trim());
     if (!m) throw new SyntaxError(`Timeline: invalid position '${at}'`);
+    const [, ref, sign, num, percent] = m;
     let base: number;
-    const ref = m[1];
     if (ref === '>') base = this.#lastEnd;
     else if (ref === '<') base = this.#lastStart;
     else if (ref) {
@@ -456,8 +750,13 @@ export class Timeline {
       if (l === undefined) throw new Error(`Timeline: unknown label '${ref}'`);
       base = l;
     } else base = this.#lastEnd;
-    const off = m[2] ? parseFloat(m[2].replace('=', '').replace(/\s+/g, '')) : 0;
-    return base + off;
+    if (!num) return base;
+    // A bare number is an absolute time.
+    if (!ref && !sign && !percent) return parseFloat(num);
+    let off = parseFloat(num);
+    // A percent after '<' or '>' is of the previous tween's length; otherwise of the tween being added.
+    if (percent) off = (off / 100) * (ref === '<' || ref === '>' ? this.#lastEnd - this.#lastStart : insertedDuration);
+    return base + (sign === '-' ? -off : off);
   }
 
   #add(
@@ -468,14 +767,18 @@ export class Timeline {
     opts: TweenOptions,
   ): this {
     const list = typeof targets === 'string' ? [targets] : targets;
-    const start = this.#resolveAt(opts.at);
     const duration = kind === 'set' ? 0 : (opts.duration ?? 0.5);
+    const start = this.#resolveAt(opts.at, duration);
     const easing = opts.easing ?? Easing.outCubic;
+    const rep: Repeat = { repeat: opts.repeat ?? 0, yoyo: opts.yoyo ?? false, repeatDelay: opts.repeatDelay ?? 0 };
+    const st = opts.stagger;
+    const delayOf: StaggerFunction =
+      typeof st === 'function' ? st : typeof st === 'number' ? (i) => i * st : st ? stagger(st.each, st) : () => 0;
     let end = start;
     list.forEach((target, i) => {
-      const s = start + i * (opts.stagger ?? 0);
-      this.#tweens.push({ target, kind, from, to, start: s, duration, easing });
-      end = Math.max(end, s + duration);
+      const s = start + delayOf(i, list.length);
+      this.#tweens.push({ target, kind, from, to, start: s, duration, easing, ...rep });
+      end = Math.max(end, s + repeatedLength(duration, rep));
     });
     this.#lastStart = start;
     this.#lastEnd = end;
@@ -501,48 +804,167 @@ export class Timeline {
     }
     return this;
   }
+  /**
+   * Animates through several values per property: `keyframes('box', { x: [0, 100, 50] }, { duration: 2 })`.
+   * `times` places each keyframe in 0..1; `easing` is one ease or one per segment.
+   */
+  keyframes(
+    targets: string | readonly string[],
+    values: Record<string, readonly TweenValue[]>,
+    options: Omit<TweenOptions, 'easing'> & {
+      times?: readonly number[];
+      easing?: EasingFunction | readonly EasingFunction[];
+    } = {},
+  ): this {
+    const duration = options.duration ?? 1;
+    const start = this.#resolveAt(options.at, duration);
+    const list = typeof targets === 'string' ? [targets] : targets;
+    let end = start;
+    for (const [prop, frames] of Object.entries(values)) {
+      const n = frames.length;
+      if (n < 2) throw new RangeError(`Timeline.keyframes: '${prop}' needs at least 2 values`);
+      const times = options.times ?? frames.map((_, i) => i / (n - 1));
+      if (times.length !== n) throw new RangeError(`Timeline.keyframes: got ${times.length} times for ${n} values`);
+      for (let k = 0; k < n - 1; k++) {
+        const e = options.easing;
+        const easing = Array.isArray(e)
+          ? (e[k] ?? Easing.linear)
+          : ((e as EasingFunction | undefined) ?? Easing.linear);
+        this.#add(
+          'fromTo',
+          list,
+          { [prop]: frames[k]! },
+          { [prop]: frames[k + 1]! },
+          {
+            ...options,
+            at: start + times[k]! * duration,
+            duration: (times[k + 1]! - times[k]!) * duration,
+            easing,
+          },
+        );
+        end = Math.max(end, this.#lastEnd);
+      }
+    }
+    this.#lastStart = start;
+    this.#lastEnd = end;
+    return this;
+  }
   label(name: string, at?: number | string): this {
     this.#labels.set(name, this.#resolveAt(at));
     return this;
   }
-  /** Nests another timeline at `at`. */
+  /** Adds another timeline's tweens at `at`, with its own repeats and speed baked in. */
   add(timeline: Timeline, at?: number | string): this {
-    const offset = this.#resolveAt(at);
-    for (const t of timeline.#tweens) this.#tweens.push({ ...t, start: t.start + offset });
+    const offset = this.#resolveAt(at, timeline.totalDuration);
+    if (timeline.#isPlain()) {
+      for (const t of timeline.#tweens) this.#tweens.push({ ...t, start: t.start + offset });
+      for (const c of timeline.#children) this.#children.push({ timeline: c.timeline, offset: c.offset + offset });
+    } else {
+      this.#children.push({ timeline, offset });
+    }
     this.#lastStart = offset;
-    this.#lastEnd = offset + timeline.duration;
+    this.#lastEnd = offset + timeline.totalDuration;
     return this;
   }
-  /** End time of the last tween, seconds. */
+  #isPlain(): boolean {
+    const o = this.#options;
+    return o.repeat === 0 && o.timeScale === 1;
+  }
+  /** Length of one play, seconds. */
   get duration(): number {
-    return this.#tweens.reduce((m, t) => Math.max(m, t.start + t.duration), 0);
+    let d = this.#tweens.reduce((m, t) => Math.max(m, t.start + repeatedLength(t.duration, t)), 0);
+    for (const c of this.#children) d = Math.max(d, c.offset + c.timeline.totalDuration);
+    return d;
+  }
+  /** Length including the timeline's repeats and speed. Infinity when it repeats forever. */
+  get totalDuration(): number {
+    return repeatedLength(this.duration, this.#options) / this.#options.timeScale;
+  }
+  /** The time inside one play that `timestamp` maps to. */
+  #localTime(timestamp: number): number {
+    const o = this.#options;
+    const d = this.duration;
+    const t = timestamp * o.timeScale;
+    if (o.repeat === 0) return t;
+    return repeatedProgress(Math.max(0, t), d, o) * d;
   }
 
   /** Evaluates every target at `timestamp`. */
   getValues(timestamp: number): Record<string, Record<string, any>> {
+    const t = this.#localTime(timestamp);
     const byTarget = new Map<string, Tween[]>();
-    for (const t of this.#tweens) {
-      let a = byTarget.get(t.target);
+    for (const tw of this.#tweens) {
+      let a = byTarget.get(tw.target);
       if (!a) {
         a = [];
-        byTarget.set(t.target, a);
+        byTarget.set(tw.target, a);
       }
-      a.push(t);
+      a.push(tw);
     }
     const out: Record<string, Record<string, any>> = {};
     for (const [target, tweens] of byTarget) {
       const props = new Set<string>();
-      for (const t of tweens) for (const k of Object.keys({ ...t.from, ...t.to })) props.add(k);
+      for (const tw of tweens) for (const k of Object.keys({ ...tw.from, ...tw.to })) props.add(k);
       const values: Record<string, TweenValue> = {};
       for (const prop of props)
         values[prop] = evalProp(
-          tweens.filter((t) => (t.from && prop in t.from) || (t.to && prop in t.to)),
+          tweens.filter((tw) => (tw.from && prop in tw.from) || (tw.to && prop in tw.to)),
           prop,
-          timestamp,
+          t,
         );
       out[target] = values;
     }
+    // Nested timelines take over the properties they animate once they've started.
+    for (const c of this.#children) {
+      if (t < c.offset) continue;
+      for (const [target, values] of Object.entries(c.timeline.getValues(t - c.offset))) {
+        out[target] = { ...out[target], ...values };
+      }
+    }
     return out;
+  }
+
+  /** Plays timelines together. Its length is the longest one. */
+  static all(...timelines: Timeline[]): Timeline {
+    return Timeline.#combine(
+      timelines,
+      timelines.map(() => 0),
+    );
+  }
+  /** Plays timelines one after another. */
+  static chain(...timelines: Timeline[]): Timeline {
+    let t = 0;
+    return Timeline.#combine(
+      timelines,
+      timelines.map((tl) => {
+        const s = t;
+        t += tl.totalDuration;
+        return s;
+      }),
+    );
+  }
+  /** Starts each timeline `gap` seconds after the previous one starts. */
+  static sequence(gap: number, ...timelines: Timeline[]): Timeline {
+    return Timeline.#combine(
+      timelines,
+      timelines.map((_, i) => i * gap),
+    );
+  }
+  /** Starts a timeline `seconds` later. */
+  static delay(seconds: number, timeline: Timeline): Timeline {
+    return Timeline.#combine([timeline], [seconds]);
+  }
+  static #combine(parts: readonly Timeline[], starts: readonly number[]): Timeline {
+    const out = new Timeline();
+    parts.forEach((p, i) => {
+      out.add(p, starts[i]!);
+    });
+    return out;
+  }
+
+  /** The value of one property of one target at `timestamp`. */
+  valueAt(target: string, prop: string, timestamp: number): TweenValue | undefined {
+    return this.getValues(timestamp)[target]?.[prop];
   }
 }
 
@@ -550,14 +972,7 @@ function evalProp(tweens: Tween[], prop: string, t: number): TweenValue {
   const sorted = [...tweens].sort((a, b) => a.start - b.start);
   let current: TweenValue = DEFAULTS[prop] ?? 0;
   // Resolve each tween's from/to by walking in start order.
-  const resolved: {
-    start: number;
-    end: number;
-    from: TweenValue;
-    to: TweenValue;
-    ease: EasingFunction;
-    kind: Tween['kind'];
-  }[] = [];
+  const resolved: { tween: Tween; from: TweenValue; to: TweenValue }[] = [];
   for (const tw of sorted) {
     let from: TweenValue, to: TweenValue;
     if (tw.kind === 'set') {
@@ -572,18 +987,27 @@ function evalProp(tweens: Tween[], prop: string, t: number): TweenValue {
       from = tw.from?.[prop] ?? current;
       to = tw.to?.[prop] ?? current;
     }
-    resolved.push({ start: tw.start, end: tw.start + tw.duration, from, to, ease: tw.easing, kind: tw.kind });
-    current = to;
+    resolved.push({ tween: tw, from, to });
+    // A tween that ends on a backwards play leaves its start value.
+    const r = tw.repeat;
+    current = tw.yoyo && r > 0 && r % 2 === 1 ? from : to;
   }
   // Before the first tween, a leading `from`, `fromTo` or `set` gives the starting value, as in GSAP.
   const first = resolved[0];
   let value: TweenValue = DEFAULTS[prop] ?? 0;
-  if (first && (first.kind === 'from' || first.kind === 'fromTo' || first.kind === 'set'))
-    value = first.kind === 'set' ? first.to : first.from;
+  if (first) {
+    const k = first.tween.kind;
+    if (k === 'from' || k === 'fromTo' || k === 'set') value = k === 'set' ? first.to : first.from;
+  }
   for (const r of resolved) {
-    if (t < r.start) break;
-    if (r.end <= r.start || t >= r.end) value = r.to;
-    else value = lerpValue(r.from, r.to, r.ease((t - r.start) / (r.end - r.start)));
+    const tw = r.tween;
+    if (t < tw.start) break;
+    if (tw.duration <= 0) {
+      value = r.to;
+      continue;
+    }
+    const p = repeatedProgress(t - tw.start, tw.duration, tw);
+    value = p >= 1 ? r.to : p <= 0 ? r.from : lerpValue(r.from, r.to, tw.easing(p));
   }
   return value;
 }

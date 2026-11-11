@@ -329,6 +329,7 @@ export class FrameRenderer {
       width: this.comp.width,
       height: this.comp.height,
       props: this.props,
+      events: this.comp.events,
     };
     pushScope({ ctx, absStart: 0, absEnd: this.duration });
     try {

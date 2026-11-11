@@ -19,6 +19,8 @@ export interface RenderContext<Props = any> {
   width: number;
   height: number;
   props: Props;
+  /** Named moments in composition time, from the composition's `events` (for example `composition.meta.json`). */
+  events: Readonly<Record<string, number>>;
 }
 
 /** Timing of the current sequence, in composition time. */

@@ -1,7 +1,29 @@
 // Compositions: videos described as a function from time to a node tree.
 
-export type { EasingFunction, InterpolateOptions, SpringOptions, TweenOptions } from './animation.ts';
-export { Easing, interpolate, interpolateColor, mixColors, noise, random, spring, Timeline } from './animation.ts';
+export type {
+  EasingFunction,
+  InterpolateOptions,
+  KeyframeOptions,
+  SpringOptions,
+  StaggerFunction,
+  StaggerOptions,
+  TimelineOptions,
+  TweenOptions,
+} from './animation.ts';
+export {
+  Easing,
+  interpolate,
+  interpolateColor,
+  keyframes,
+  loopTime,
+  mixColors,
+  noise,
+  random,
+  spring,
+  stagger,
+  Timeline,
+  wiggle,
+} from './animation.ts';
 export type { AssetSource, AudioAnalysis, FontAssetOptions } from './assets.ts';
 export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, readSource, SvgAsset } from './assets.ts';
 export type { CompositionOptions } from './composition.ts';

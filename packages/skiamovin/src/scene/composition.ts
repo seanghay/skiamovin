@@ -19,6 +19,11 @@ export interface CompositionOptions<Props> {
    * of static text but differs between macOS, Windows, Linux and the browser.
    */
   textRendering?: 'outlines' | 'native';
+  /**
+   * Named moments in seconds, such as `{ drop: 2.4 }`, available as `ctx.events` and usable as `Timeline` labels.
+   * Keep them in a `composition.meta.json` next to the composition so a timeline editor can move them.
+   */
+  events?: Record<string, number>;
   defaultProps?: Props;
   /** Must be pure and synchronous. */
   render: (ctx: RenderContext<Props>) => Child;
@@ -33,6 +38,7 @@ export class Composition<Props = Record<string, unknown>> {
   readonly colorSpace: CompositionOptions<Props>['colorSpace'];
   readonly fonts: FontAsset[];
   readonly textRendering: 'outlines' | 'native';
+  readonly events: Readonly<Record<string, number>>;
   readonly defaultProps: Props;
   readonly render: (ctx: RenderContext<Props>) => Child;
   readonly #duration: CompositionOptions<Props>['duration'];
@@ -48,6 +54,7 @@ export class Composition<Props = Record<string, unknown>> {
     this.colorSpace = options.colorSpace;
     this.fonts = options.fonts ?? [];
     this.textRendering = options.textRendering ?? 'outlines';
+    this.events = Object.freeze({ ...(options.events ?? {}) });
     this.defaultProps = (options.defaultProps ?? {}) as Props;
     this.render = options.render;
     this.#duration = options.duration;
