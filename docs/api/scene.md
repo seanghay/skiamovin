@@ -472,6 +472,37 @@ top-level `await`.
 
 ---
 
+## Effects, glass and backgrounds
+
+`effects` on any node applies finishing effects to it and everything inside it, in order:
+
+```ts
+box({ effects: [glow({ radius: 24 }), vignette(), grain()] }, [...])
+```
+
+| Effect | Description |
+|---|---|
+| `grain({ amount?, size?, seed?, animated? })` | Film grain, strongest in the midtones, new every frame unless `animated: false`. Seeded, so renders repeat |
+| `glow({ radius?, intensity?, threshold? })` | A soft glow around the bright parts |
+| `vignette({ amount?, softness?, color? })` | Darker corners |
+| `chromaticAberration({ amount? })` | Color fringes toward the edges, in pixels |
+| `halftone({ size?, angle? })`, `pixelate({ size? })`, `sharpen({ amount? })` |  |
+
+`glass: true` (or `glass: { blur?, refraction?, edge?, highlight?, dispersion?, tint? }`) turns a node into
+frosted glass made from what's behind it, inside its rounded shape: blurred, bent near the edges like a thick
+lens, tinted, and lit along the rim.
+
+```ts
+box({ size: { width: 560, height: 260 }, borderRadius: 40, glass: true }, [text('Hello', { color: '#fff' })])
+```
+
+Outer shadows only show outside a node's shape, as in CSS, so translucent and glass cards don't darken
+themselves.
+
+`backgrounds.mesh(colors?)`, `backgrounds.aurora()`, `backgrounds.noise()`, `backgrounds.dots()` and
+`backgrounds.grid()` are animated, full-size backgrounds with good defaults. Each takes colors, a speed and
+node style.
+
 ## Color grading
 
 Set `grade` on any node to grade it and everything inside it. Grades apply in order, and each takes a `strength`

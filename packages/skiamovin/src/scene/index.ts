@@ -26,8 +26,11 @@ export {
 } from './animation.ts';
 export type { AssetSource, AudioAnalysis, FontAssetOptions, LutAssetOptions } from './assets.ts';
 export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, LutAsset, readSource, SvgAsset } from './assets.ts';
+export { backgrounds } from './backgrounds.ts';
 export type { CompositionOptions } from './composition.ts';
 export { Composition, CompositionModule } from './composition.ts';
+export type { Effect, GlassOptions } from './effects.ts';
+export { chromaticAberration, glow, grain, halftone, pixelate, sharpen, vignette } from './effects.ts';
 export type { AdjustOptions, CurvesOptions, Grade, LevelsOptions, ParsedLut } from './grading.ts';
 export {
   adjust,

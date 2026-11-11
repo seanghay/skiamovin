@@ -13,6 +13,7 @@ import {
 } from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
+import type { Effect, GlassOptions } from './effects.ts';
 import type { Grade } from './grading.ts';
 
 // Render context
@@ -102,6 +103,10 @@ export interface VisualStyle {
   colorFilter?: ColorFilter;
   /** Color grading for this node and everything inside it, applied in order. See `lut`, `adjust`, `curves`. */
   grade?: Grade | readonly Grade[];
+  /** Finishing effects for this node and everything inside it, applied in order. See `grain`, `glow`, `vignette`. */
+  effects?: readonly Effect[];
+  /** Frosted, light-bending glass made from what's behind the node, inside its rounded shape. */
+  glass?: GlassOptions | true;
   blendMode?: BlendMode | string;
   zIndex?: number;
   mask?: SceneNode;

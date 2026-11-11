@@ -5,6 +5,7 @@ import {
   BLEND_MODE_NAMES,
   BlendMode,
   BlurStyle,
+  ClipOp,
   ColorSpace,
   ColorType,
   PaintStyle,
@@ -36,6 +37,7 @@ import { borrowImageFromVideoSample, drawFit } from '../media/index.ts';
 import { type Style, TaffyTree } from '../taffy/index.ts';
 import { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Composition } from './composition.ts';
+import { buildEffects, buildGlass } from './effects.ts';
 import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
   type AudioClip,
@@ -380,6 +382,7 @@ export class FrameRenderer {
   /** Renders one frame into `this.surface`. */
   async renderFrame(timestamp: number): Promise<Surface> {
     await this.init();
+    this.#frame = Math.round(timestamp * this.comp.frameRate);
     const nodes = this.buildTree(timestamp);
     await this.#prepare(nodes);
     if (this.#ring.length) this.surface = this.#ring[this.#ringIndex++ % this.#ring.length]!;
@@ -683,6 +686,18 @@ export class FrameRenderer {
     const rr = this.#rrect(st.borderRadius, w, h);
     const opacity = st.opacity ?? 1;
 
+    // Glass: bend and frost what's behind, inside the shape.
+    if (st.glass) {
+      const radius = typeof st.borderRadius === 'number' ? st.borderRadius : (st.borderRadius?.[0] ?? 0);
+      const { filter, temps } = buildGlass(st.glass === true ? {} : st.glass, b.width, b.height, radius);
+      canvas.save();
+      canvas.clipRRect(rr, undefined, true);
+      canvas.saveLayer({ backdrop: filter });
+      canvas.restore();
+      canvas.restore();
+      for (const t of temps) t.delete();
+    }
+
     // Backdrop blur: blur what's behind, inside the shape.
     if (st.backdropBlur) {
       canvas.save();
@@ -698,7 +713,8 @@ export class FrameRenderer {
     let layer = false;
     const filters: ImageFilter[] = [];
     const graded = st.grade ? resolveGrades(st.grade) : null;
-    if (opacity < 1 || st.blur || st.filter || st.colorFilter || graded || st.blendMode || st.mask) {
+    const fx = st.effects?.length ? st.effects : null;
+    if (opacity < 1 || st.blur || st.filter || st.colorFilter || graded || fx || st.blendMode || st.mask) {
       layer = true;
       const p = new Paint();
       if (opacity < 1) p.setAlphaf(Math.max(0, opacity));
@@ -707,6 +723,11 @@ export class FrameRenderer {
         const bl = imageFilters.blur([st.blur, st.blur], TileMode.Decal, f)!;
         filters.push(bl);
         f = bl;
+      }
+      if (fx) {
+        const built = buildEffects(fx, b.width, b.height, this.#frame, f);
+        filters.push(...built.temps);
+        f = built.filter;
       }
       if (f) p.setImageFilter(f);
       const cf =
@@ -724,7 +745,13 @@ export class FrameRenderer {
 
     // Outer shadows
     const shadows = st.shadow ? ((Array.isArray(st.shadow) ? st.shadow : [st.shadow]) as Shadow[]) : [];
-    for (const sh of shadows.filter((s) => !s.inset)) {
+    const outer = shadows.filter((s) => !s.inset);
+    // As in CSS, outer shadows only show outside the box, so translucent boxes don't darken themselves.
+    if (outer.length) {
+      canvas.save();
+      canvas.clipRRect(rr, ClipOp.Difference, true);
+    }
+    for (const sh of outer) {
       const p = this.#paint.reset().setAntiAlias(true).setColor(sh.color);
       const blur = sh.blur ?? 0;
       const mf = blur > 0 ? maskFilters.blur(BlurStyle.Normal, blur / 2) : null;
@@ -735,6 +762,7 @@ export class FrameRenderer {
       p.setMaskFilter(null);
       mf?.delete();
     }
+    if (outer.length) canvas.restore();
 
     // Background
     if (st.background !== undefined) {
@@ -986,6 +1014,8 @@ export class FrameRenderer {
     );
   }
 
+  /** Frame number being drawn, for effects that change every frame (grain). */
+  #frame = 0;
   #splitStyles = new Float32Array(0);
   #splitColors = new Uint32Array(0);
 

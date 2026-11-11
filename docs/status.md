@@ -18,6 +18,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Animation helpers | `stagger`, `keyframes`, `wiggle`, `loopTime`; easing including `smooth`, `piecewise`, `custom` (from an SVG path) and `irregular`; timelines with percent offsets, repeat, yoyo, `timeScale`, keyframes, nesting and `all`/`chain`/`sequence`/`delay`; named `events` on compositions |
 | Physics-based motion | SwiftUI-style springs (`response`, `bounce`, presets), starting speed, retargeting (`springPath`), momentum (`decay`, `fling` with snapping and edges), `rubberBand`, `fall`, scripted gestures and ready-made iOS motions |
 | Transitions | `transition()` and `series` transitions from gl-transitions (all 214 compile and render), `listTransitions()` with parameters and licenses |
+| Effects and glass | `effects` (`grain`, `glow`, `vignette`, `chromaticAberration`, `halftone`, `pixelate`, `sharpen`), `glass` on any node, `backgrounds` presets (`mesh`, `aurora`, `noise`, `dots`, `grid`) |
 | Color grading | `grade` on any node: `lut` (`.cube`, LUT images, Hald; tetrahedral, checked against ffmpeg), `adjust`, `curves`, `levels`, `gradeWheels`, `cdl`, `gradientMap`, `channelMixer`, `posterize`, `threshold`, `blendGrades`, each with `strength` |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
