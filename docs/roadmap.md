@@ -180,9 +180,13 @@ changes.
 | Captions | Diffusion Studio, Premiere | A captions node that reads SRT or VTT files with word timings, with style presets and word-by-word reveals |
 | Music-driven animation | Coldtype | Read MIDI files into note events (`midi(asset).notes`) and add beat and onset detection next to `analyzeAudio` |
 
-## Phase 7: Camera, film and finishing
+## Phase 7: Camera, film and finishing (in progress)
 
 The tools that make a video look filmed and finished rather than just animated.
+
+Implemented: motion blur, shot sizes with rule-of-thirds placement, camera moves, handheld shake, cutting between
+cameras, plain names for the basic transitions, loudness normalization, delivery presets, hand-drawn strokes,
+scattering and `lookAt`. Not yet: the rest of the tables below.
 
 ### Camera and image quality
 
