@@ -68,19 +68,21 @@ jobs:
       - name: Install Linux packages
         if: runner.os == 'Linux'
         timeout-minutes: 10
-        # The runners' Azure package mirror sometimes fails to resolve. Skip apt when the image already has the
-        # packages; otherwise use the main Ubuntu archive and retry.
+        # Skia comes prebuilt, so linking only needs fontconfig and freetype. The runners' package mirrors are
+        # sometimes unreachable; then link against the runtime libraries the image already has.
         run: |
           if dpkg -s libfontconfig1-dev libfreetype-dev >/dev/null 2>&1; then exit 0; fi
-          sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' \
-            /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/apt-mirrors.txt 2>/dev/null || true
-          for attempt in 1 2 3; do
-            sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update &&
-              sudo apt-get -o Acquire::Retries=3 install -y libfontconfig1-dev libfreetype-dev && exit 0
-            echo "apt failed (attempt $attempt), retrying in 20 s"
-            sleep 20
+          if timeout 180 sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=15 update &&
+            timeout 180 sudo apt-get install -y libfontconfig1-dev libfreetype-dev; then exit 0; fi
+          echo "Package mirror unreachable; linking against the installed runtime libraries."
+          dir="$RUNNER_TEMP/syslibs"
+          mkdir -p "$dir"
+          for lib in fontconfig freetype; do
+            so=$(ldconfig -p | awk -v name="lib$lib.so." 'index($1, name) == 1 { print $NF; exit }')
+            if [ -z "$so" ]; then echo "lib$lib is not installed on this runner"; exit 1; fi
+            ln -sf "$so" "$dir/lib$lib.so"
           done
-          exit 1
+          echo "RUSTFLAGS=-L $dir" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Clippy
         run: cargo clippy -p skiamovin-node -p skiamovin-codecs -- -D warnings
