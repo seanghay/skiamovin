@@ -162,7 +162,12 @@ Not yet: `transform` and `transformMatchingTex` between formulas, `autoZoom` to 
 **Done when:** an example explains a short math idea end to end, and physics and math match exactly between the
 Node and WebAssembly builds.
 
-## Phase 6: Type, code and sound
+## Phase 6: Type, code and sound (mostly done)
+
+Implemented: `fontFeatures`, split text by grapheme clusters (Unicode's rules, so marks stay with their letter),
+`textPaths()`, `variableText()`, `fitText()`, `code()` with animated changes, `captions()`, `parseMidi()`, and onset,
+tempo and beat detection in `analyzeAudio()`. Not yet: font subsetting, and beat tracking for music whose tempo
+changes.
 
 | Idea | From | What we add |
 |---|---|---|
