@@ -37,5 +37,6 @@ node examples/launch/render.ts   # render the launch film
 | `21-math-lesson.ts` | A vector field, a formula written on and a camera that zooms to a point |
 | `22-how-transformers-work.ts` | A 92-second Transformer explainer (Llama 3, RoPE) shot as one continuous camera move. Run `examples/fetch-assets.sh` first |
 | `23-how-transformers-work-km.ts` | The same film in Khmer, set in Google Sans |
+| `24-skiamovin-launch.ts` | The Skiamovin launch film: a minute cut to the beat, with live demos of every feature. Run `examples/fetch-assets.sh` first |
 | `launch/` | A 48-second product film with a generated score |
 | `web-studio/` | A Vite app: live preview, editable props and MP4 export in the browser |

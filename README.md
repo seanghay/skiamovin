@@ -102,9 +102,11 @@ npm test               # full test suite (macOS)
 
 ## Examples
 
-- [`examples/`](examples): 23 example videos, from lower thirds and kinetic type to physics, code walkthroughs,
+- [`examples/`](examples): 24 example videos, from lower thirds and kinetic type to physics, code walkthroughs,
   3D and captions, plus a product launch film. Run `examples/make-assets.sh` and `examples/fetch-assets.sh`
   first, then `node examples/render-all.ts`, or render one with `npx skiamovin render`.
+- [`examples/keynote`](examples/keynote): the Skiamovin launch film (`24-skiamovin-launch.ts`), about a minute
+  cut to the beat, made only from what the library does.
 - [`examples/transformer`](examples/transformer): a 97-second explainer of how a Transformer works, with RoPE,
   shot as one continuous camera move. It renders in English (`22-how-transformers-work.ts`) and Khmer
   (`23-how-transformers-work-km.ts`).
