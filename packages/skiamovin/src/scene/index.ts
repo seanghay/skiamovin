@@ -137,6 +137,8 @@ export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './ren
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
 export type { Midi, MidiNote, Onset, Rhythm } from './rhythm.ts';
 export { beatAt, detectRhythm, parseMidi, pulse } from './rhythm.ts';
+export type { ScatterOptions, ScatterPoint } from './scatter.ts';
+export { lookAt, scatter } from './scatter.ts';
 export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from './simulation.ts';
 export { PhysicsWorld, physics } from './simulation.ts';
 export type { StatesOptions } from './states.ts';

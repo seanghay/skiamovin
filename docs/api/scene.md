@@ -749,6 +749,20 @@ function, or stagger options with `each`. `repeat: -1` repeats forever. Values m
 (interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their `set` value, or to `0`
 (`1` for `opacity` and `scale`).
 
+### `scatter` and `lookAt`
+
+```ts
+scatter(40, { area: { width: 1920, height: 1080 }, spacing: 80, seed: 'stars' }).map((p) =>
+  box({ position: 'absolute', inset: { left: p.x, top: p.y }, size: { width: 4, height: 4 }, opacity: p.random }),
+);
+```
+
+`scatter(count, options)` returns seeded positions for copies, as Blender's scattering and array modifiers do:
+random points in an `area` (at least `spacing` apart when possible), evenly along a `path`, or on a `grid` with
+`columns`. Each point has `x`, `y`, `index`, `angle` (the path's direction, or a random angle) and a seeded
+`random` number for varying copies. `lookAt(from, to)` is the rotation in degrees that points from one point to
+another.
+
 ### `stroke`
 
 ```ts

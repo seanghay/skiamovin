@@ -41,7 +41,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --test-concurrency=1 test/*.test.ts",
-    "test:portable": "node --test test/smoke.test.ts test/taffy.test.ts test/animation.test.ts test/rhythm.test.ts"
+    "test:portable": "node --test test/smoke.test.ts test/taffy.test.ts test/animation.test.ts test/rhythm.test.ts test/film.test.ts test/scatter.test.ts"
   },
   "peerDependencies": {
     "mediabunny": "^1.40.0"
