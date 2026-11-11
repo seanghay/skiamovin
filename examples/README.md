@@ -35,6 +35,7 @@ node examples/launch/render.ts   # render the launch film
 | `19-film-gallery.ts` | Photos as 3D cards with a focus pull, handheld drift, a film grade and grain |
 | `20-beat-visualizer.ts` | Detected beats pulse radial petals and scattered sparks |
 | `21-math-lesson.ts` | A vector field, a formula written on and a camera that zooms to a point |
-| `22-how-transformers-work.ts` | A 90-second explainer of the Transformer, with cuts on the music's beats. Run `examples/fetch-assets.sh` first |
+| `22-how-transformers-work.ts` | A 92-second Transformer explainer (Llama 3, RoPE) shot as one continuous camera move. Run `examples/fetch-assets.sh` first |
+| `23-how-transformers-work-km.ts` | The same film in Khmer, set in Google Sans |
 | `launch/` | A 48-second product film with a generated score |
 | `web-studio/` | A Vite app: live preview, editable props and MP4 export in the browser |
