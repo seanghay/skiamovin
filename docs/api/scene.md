@@ -208,6 +208,7 @@ interface PathStyle {
   strokeWidth?: number;             // default 1
   strokeCap?: 'butt' | 'round' | 'square';
   strokeJoin?: 'miter' | 'round' | 'bevel';
+  dash?: number[];                  // dash and gap lengths, like SVG's stroke-dasharray
   /** Draw part of the path, as fractions of its total length. Animate `end` to draw it on. */
   trim?: { start?: number; end?: number; offset?: number };
   /** Arrowheads at the (trimmed) ends. `true` sizes them from the stroke width. */
@@ -839,6 +840,32 @@ The world is simulated once with Rapier in the Rust core and cached by its descr
 from `render` every frame is cheap, and frames look positions up by time (`body`, `all`). `world.contacts` and
 `contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
 a test checks the Node and WebAssembly builds give exactly the same positions.
+
+### `diagram`
+
+```ts
+diagram('flowchart LR\n  A[Idea] --> B{Good?}\n  B -->|yes| C(Video)', {
+  fontSize: 28,
+  draw: interpolate(t, [0, 2], [0, 1]),
+  styles: { C: { transform: { scale: 1.1 } } },
+});
+```
+
+A Mermaid diagram. [Pele](https://github.com/obsidianmd/pele) (MIT) lays it out: flowcharts, sequence, class,
+state, ER, pie, Gantt, mind maps and the other types Pele supports. Labels are measured with the composition's
+fonts, the same way text nodes are drawn, so they fit their boxes. The result is drawn with path and text nodes,
+not as an image.
+
+| Option | What it does |
+|---|---|
+| `theme` | `'dark'` (default), `'light'`, or your own colors (`background`, `foreground`, `line`, `surface`, `border`, `accent`, `series` and more), plus `radius` and `lineWidth`. `diagramThemes` holds the two built-in themes |
+| `fontSize` | Base text size in pixels. Default 20 |
+| `fontFamily`, `monoFamily` | Fonts for labels and for code. Default: the composition's first font |
+| `draw` | 0 to 1. Nodes appear in order, and each edge is traced from the node it leaves to the node it enters |
+| `styles` | Styles by id, such as `{ B: { opacity: 0.3 } }`. Node ids are the Mermaid ids; edges use the ids Pele gives them |
+
+Pele is loaded the first time a diagram is drawn, so it costs nothing when unused. Each diagram is laid out once
+per renderer and reused, and the Node and WebAssembly builds draw it the same way.
 
 ### Graphs, camera and reveals
 

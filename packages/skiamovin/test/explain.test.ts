@@ -4,9 +4,9 @@ import { AlphaType, ColorType, ImageInfo, init } from 'skiamovin';
 import {
   axes,
   box,
-  camera,
   Composition,
   CompositionSink,
+  camera,
   create,
   fadeIn,
   fitCamera,

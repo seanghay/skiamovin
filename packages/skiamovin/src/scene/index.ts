@@ -29,8 +29,12 @@ export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, LutAsset, readSource,
 export { backgrounds } from './backgrounds.ts';
 export type { CompositionOptions } from './composition.ts';
 export { Composition, CompositionModule } from './composition.ts';
+export type { DiagramOptions, DiagramTheme } from './diagram.ts';
+export { diagram, diagramThemes } from './diagram.ts';
 export type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 export { chromaticAberration, glow, grain, halftone, pixelate, sharpen, vignette } from './effects.ts';
+export type { Axes, AxesOptions, CameraState } from './explain.ts';
+export { axes, camera, create, fadeIn, fitCamera, indicate, numberLine } from './explain.ts';
 export type { AdjustOptions, CurvesOptions, Grade, LevelsOptions, ParsedLut } from './grading.ts';
 export {
   adjust,
@@ -46,8 +50,6 @@ export {
   posterize,
   threshold,
 } from './grading.ts';
-export type { Axes, AxesOptions, CameraState } from './explain.ts';
-export { axes, camera, create, fadeIn, fitCamera, indicate, numberLine } from './explain.ts';
 export type { MathOptions } from './math.ts';
 export { math } from './math.ts';
 export type {

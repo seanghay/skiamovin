@@ -144,7 +144,11 @@ shared elements whose content differs.
 **Done when:** a list that reorders, a card that expands, a shared element across a cut and a composition
 rendered at three sizes all render correctly at any seek position and in parallel workers.
 
-## Phase 5: Simulation and explainers
+## Phase 5: Simulation and explainers (done)
+
+Implemented: physics, math, graphs, reveal animations, diagrams and the camera, with `examples/11-explainer.ts`.
+Not yet: `transform` and `transformMatchingTex` between formulas, `autoZoom` to fit a set of nodes by id (use
+`fitCamera` with a rectangle), and MathJax as a fallback.
 
 | Idea | From | What we add |
 |---|---|---|

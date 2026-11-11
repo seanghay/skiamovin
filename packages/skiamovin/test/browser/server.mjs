@@ -34,6 +34,7 @@ const BARE = {
   'skiamovin/taffy': '/pkg/dist/taffy/index.js',
   '#loader': '/pkg/dist/native/loader-wasm.js',
   mediabunny: '/modules/mediabunny/dist/bundles/mediabunny.mjs',
+  'pele/lazy': '/modules/pele/dist/esm/lazy.js',
 };
 const rewrite = (src) =>
   src.replace(/(\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"./][^'"]*)\2/g, (m, pre, q, spec) =>

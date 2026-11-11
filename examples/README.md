@@ -22,5 +22,6 @@ node examples/launch/render.ts   # render the launch film
 | `08-logo-reveal.ts` | A logo animation |
 | `09-slideshow.ts` | Photos with transitions |
 | `10-vertical-social.ts` | A 9:16 video for social media |
+| `11-explainer.ts` | A short math explainer: a diagram, a formula, a graph and a camera move |
 | `launch/` | A 48-second product film with a generated score |
 | `web-studio/` | A Vite app: live preview, editable props and MP4 export in the browser |

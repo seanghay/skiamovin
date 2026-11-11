@@ -5,6 +5,7 @@ import {
   box,
   Composition,
   CompositionSink,
+  diagram,
   interpolate,
   linearGradient,
   math,
@@ -141,6 +142,19 @@ export function goldenScenes(font) {
             },
             [math('\\int_0^1 x^2\\,dx = \\frac{1}{3}', { fontSize: 30, color: '#e0e7ff' })],
           ),
+      }),
+    },
+    {
+      name: 'diagram',
+      times: [0.4, 1],
+      comp: new Composition({
+        ...base,
+        fonts: [font],
+        background: '#0b1120',
+        render: ({ timestamp }) =>
+          box({ size: { width: '100%', height: '100%' }, justifyContent: 'center', alignItems: 'center' }, [
+            diagram('flowchart LR\n  A[Plan] --> B{Ready?}\n  B -->|yes| C(Ship)', { fontSize: 11, draw: timestamp }),
+          ]),
       }),
     },
     {

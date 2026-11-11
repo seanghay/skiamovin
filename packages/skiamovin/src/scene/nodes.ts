@@ -13,6 +13,7 @@ import {
 } from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
+import type { DiagramSpec } from './diagram.ts';
 import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 import type { Grade } from './grading.ts';
 import type { SpringParams } from './physics.ts';
@@ -132,7 +133,8 @@ export interface VisualStyle {
   cache?: string;
 }
 
-export type NodeStyle = Style &
+// Taffy's `textAlign` (block layout only) is left out so it doesn't clash with the text property of the same name.
+export type NodeStyle = Omit<Style, 'textAlign'> &
   VisualStyle & {
     /** Tailwind-style utility classes, such as `'flex items-center gap-4 p-8 rounded-2xl bg-slate-900'`. */
     class?: string;
@@ -205,7 +207,7 @@ interface Base {
 }
 
 export type SceneNode =
-  | ({ type: 'box' } & Base)
+  | ({ type: 'box'; diagram?: DiagramSpec } & Base)
   | ({ type: 'path'; path: Path } & PathStyle & Base)
   | ({ type: 'text'; content: (string | Span)[]; text: TextProps } & Base)
   | ({
@@ -480,6 +482,8 @@ export interface PathStyle {
   strokeWidth?: number;
   strokeCap?: 'butt' | 'round' | 'square';
   strokeJoin?: 'miter' | 'round' | 'bevel';
+  /** Dashes: lengths of dash, gap, dash, gap and so on, as in SVG's `stroke-dasharray`. */
+  dash?: readonly number[];
   /**
    * Draws only part of the path, as fractions of its total length: `{ end: progress }` draws it on.
    * `offset` moves the drawn part along the path.
@@ -514,7 +518,7 @@ export function pathFromSVG(d: string): Path {
 export function path(d: string | Path, style: NodeStyle & PathStyle = {}): SceneNode {
   style = withClass(style);
   const p = typeof d === 'string' ? pathFromSVG(d) : d;
-  const { fill, stroke, strokeWidth, strokeCap, strokeJoin, trim, arrow, ...rest } = style;
+  const { fill, stroke, strokeWidth, strokeCap, strokeJoin, dash, trim, arrow, ...rest } = style;
   if (!rest.size) {
     const b = p.computeTightBounds();
     rest.size = { width: Math.max(0, b.right), height: Math.max(0, b.bottom) };
@@ -527,6 +531,7 @@ export function path(d: string | Path, style: NodeStyle & PathStyle = {}): Scene
     strokeWidth,
     strokeCap,
     strokeJoin,
+    dash,
     trim,
     arrow,
     style: rest,

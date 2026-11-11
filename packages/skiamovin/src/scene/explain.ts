@@ -49,12 +49,7 @@ export interface Axes {
   ): SceneNode;
 }
 
-const fmt = (v: number) =>
-  Math.abs(v) < 1e-9
-    ? '0'
-    : Number.isInteger(v)
-      ? String(v)
-      : v.toFixed(Math.min(3, Math.max(0, -Math.floor(Math.log10(Math.abs(v) % 1 || 1)) + 1)));
+const fmt = (v: number) => (Math.abs(v) < 1e-9 ? '0' : String(Number(v.toFixed(3))));
 
 /** Number axes with a mapping from graph coordinates to pixels, like Manim's `Axes`. */
 export function axes(options: AxesOptions): Axes {
@@ -101,7 +96,7 @@ export function axes(options: AxesOptions): Axes {
               position: 'absolute',
               inset: { left: px - 20, top: py + size + 4 },
               size: { width: 40 },
-              textAlign: 'center' as never,
+              textAlign: 'center',
               opacity: draw === undefined ? 1 : Math.max(0, draw * 2 - 1),
             }),
           );
@@ -126,7 +121,7 @@ export function axes(options: AxesOptions): Axes {
               position: 'absolute',
               inset: { left: px - size - 48, top: py - (label.fontSize ?? 18) * 0.7 },
               size: { width: 40 },
-              textAlign: 'right' as never,
+              textAlign: 'right',
               opacity: draw === undefined ? 1 : Math.max(0, draw * 2 - 1),
             }),
           );

@@ -27,6 +27,7 @@ import {
   Path,
   type Picture,
   PictureRecorder,
+  pathEffects,
   RuntimeEffect,
   Shader,
   type Surface,
@@ -37,6 +38,14 @@ import { borrowImageFromVideoSample, drawFit } from '../media/index.ts';
 import { type Style, TaffyTree } from '../taffy/index.ts';
 import { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Composition } from './composition.ts';
+import {
+  type DiagramLayout,
+  type DiagramSpec,
+  diagramNodes,
+  freeDiagram,
+  layoutDiagram,
+  loadDiagram,
+} from './diagram.ts';
 import { buildEffects, buildGlass, buildLayerStyle } from './effects.ts';
 import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
@@ -249,6 +258,7 @@ export class FrameRenderer {
   #videoTracks = new Map<Input | InputVideoTrack, InputVideoTrack | null>();
   #videoCounter = new Map<InputVideoTrack, number>();
   #paint = new Paint();
+  #diagrams = new Map<string, DiagramLayout>();
   #initialized = false;
 
   constructor(comp: Composition<any>, options: RendererOptions = {}) {
@@ -368,6 +378,7 @@ export class FrameRenderer {
         else out.push(c as SceneNode);
       };
       walk(this.comp.render(ctx));
+      this.#expandDiagrams(out);
       return out;
     } finally {
       popScope();
@@ -450,6 +461,8 @@ export class FrameRenderer {
         );
       }
       if (n.type === 'shader' && n.transition) loads.push(loadTransitions());
+      if (n.type === 'box' && n.diagram && !this.#diagrams.has(this.#diagramKey(n.diagram)))
+        loads.push(loadDiagram(n.diagram.source));
       if (n.type === 'shader')
         for (const c of Object.values(n.shaderChildren)) {
           if (c instanceof ImageAsset && !c._loaded()) loads.push(c._get());
@@ -461,6 +474,42 @@ export class FrameRenderer {
     };
     nodes.forEach(visit);
     await Promise.all(loads);
+    this.#expandDiagrams(nodes);
+  }
+
+  #diagramKey(d: DiagramSpec): string {
+    return JSON.stringify([d.source, d.theme, d.fontSize, d.fontFamily, d.monoFamily]);
+  }
+
+  /** Fills diagram nodes with their shapes and text, laying out each diagram once. */
+  #expandDiagrams(nodes: SceneNode[]): void {
+    const visit = (n: SceneNode) => {
+      if (n.type === 'box' && n.diagram && n.children.length === 0) {
+        const key = this.#diagramKey(n.diagram);
+        let layout = this.#diagrams.get(key);
+        if (!layout) {
+          const made = layoutDiagram(n.diagram, (content, props) => {
+            const p = this.#paragraphFor({ type: 'text', content, text: props, style: {}, children: [] });
+            p.layout(1e6);
+            return { width: p.maxIntrinsicWidth(), baseline: p.alphabeticBaseline() };
+          });
+          // Not loaded yet: `#prepare` loads Pele and expands it again.
+          if (!made) return;
+          layout = made;
+          if (this.#diagrams.size >= 32) {
+            const [oldKey, old] = this.#diagrams.entries().next().value!;
+            freeDiagram(old);
+            this.#diagrams.delete(oldKey);
+          }
+          this.#diagrams.set(key, layout);
+        }
+        n.style = { size: { width: layout.width, height: layout.height }, ...n.style };
+        n.children = diagramNodes(layout, n.diagram);
+        return;
+      }
+      n.children.forEach(visit);
+    };
+    nodes.forEach(visit);
   }
 
   async #videoImage(media: Input | InputVideoTrack, t: number): Promise<Image | null> {
@@ -1297,7 +1346,12 @@ export class FrameRenderer {
       p.setStrokeJoin(
         { miter: StrokeJoin.Miter, round: StrokeJoin.Round, bevel: StrokeJoin.Bevel }[n.strokeJoin ?? 'miter'],
       );
+      const dash =
+        n.dash && n.dash.length > 0 ? pathEffects.dash(n.dash.length % 2 ? [...n.dash, ...n.dash] : n.dash) : null;
+      p.setPathEffect(dash);
       canvas.drawPath(shape, p);
+      p.setPathEffect(null);
+      dash?.delete();
       // Arrowheads point along the path at its (trimmed) ends.
       for (const end of ['start', 'end'] as const) {
         const a = n.arrow?.[end];
