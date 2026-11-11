@@ -64,8 +64,10 @@ for (const [k, v] of vars) {
   if (!m) continue;
   const c = color(v);
   if (!c) continue;
-  if (m[2]) (colors[m[1]] ??= {})[m[2]] = c;
-  else colors[m[1]] = c;
+  if (m[2]) {
+    colors[m[1]] ??= {};
+    colors[m[1]][m[2]] = c;
+  } else colors[m[1]] = c;
 }
 
 const fontSize = {};

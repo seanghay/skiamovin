@@ -107,6 +107,13 @@ function radius(v: string | undefined): number | null {
   return (theme.radius as Record<string, number>)[v] ?? null;
 }
 
+/** Sets `target[key]` unless the value is missing; reports whether it did. */
+function assign(target: Record<string, unknown>, key: string, value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  target[key] = value;
+  return true;
+}
+
 /**
  * Turns Tailwind utility classes into node style, with Tailwind's default colors, spacing, type scale, radii and
  * shadows: `tw('flex items-center gap-4 p-8 rounded-2xl bg-slate-900 text-white text-4xl font-bold')`. Unknown
@@ -148,7 +155,6 @@ export function tw(classes: string): Style {
     const neg = raw.startsWith('-');
     const cls = neg ? raw.slice(1) : raw;
     const sign = (v: number | string | null) => (v === null ? null : neg ? (typeof v === 'number' ? -v : `-${v}`) : v);
-    let m: RegExpExecArray | null;
     const ok = (() => {
       switch (cls) {
         case 'flex':
@@ -231,176 +237,203 @@ export function tw(classes: string): Style {
           s.shadow = [];
           return true;
       }
-      if ((m = /^items-(\w+)$/.exec(cls)) && ALIGN[m[1]!]) return ((s.alignItems = ALIGN[m[1]!] as never), true);
-      if ((m = /^self-(\w+)$/.exec(cls)) && ALIGN[m[1]!]) return ((s.alignSelf = ALIGN[m[1]!] as never), true);
-      if ((m = /^justify-(\w+)$/.exec(cls)) && JUSTIFY[m[1]!])
-        return ((s.justifyContent = JUSTIFY[m[1]!] as never), true);
-      if ((m = /^content-(\w+)$/.exec(cls)) && JUSTIFY[m[1]!])
-        return ((s.alignContent = JUSTIFY[m[1]!] as never), true);
-      if ((m = /^justify-items-(\w+)$/.exec(cls)) && ALIGN[m[1]!])
-        return ((s.justifyItems = ALIGN[m[1]!] as never), true);
-      if ((m = /^gap-(x-|y-)?(.+)$/.exec(cls))) {
-        const v = length(m[2]!);
-        if (v === null) return false;
-        if (m[1] === 'x-') s.columnGap = v as never;
-        else if (m[1] === 'y-') s.rowGap = v as never;
-        else s.gap = v as never;
-        return true;
+      const rules: [RegExp, (m: RegExpExecArray) => boolean][] = [
+        [/^items-(\w+)$/, (m) => assign(s, 'alignItems', ALIGN[m[1]!])],
+        [/^self-(\w+)$/, (m) => assign(s, 'alignSelf', ALIGN[m[1]!])],
+        [/^justify-(\w+)$/, (m) => assign(s, 'justifyContent', JUSTIFY[m[1]!])],
+        [/^content-(\w+)$/, (m) => assign(s, 'alignContent', JUSTIFY[m[1]!])],
+        [/^justify-items-(\w+)$/, (m) => assign(s, 'justifyItems', ALIGN[m[1]!])],
+        [
+          /^gap-(x-|y-)?(.+)$/,
+          (m) => assign(s, m[1] === 'x-' ? 'columnGap' : m[1] === 'y-' ? 'rowGap' : 'gap', length(m[2]!)),
+        ],
+        [/^basis-(.+)$/, (m) => assign(s, 'flexBasis', length(m[1]!, true))],
+        [
+          /^grid-(cols|rows)-(\d+)$/,
+          (m) => assign(s, m[1] === 'cols' ? 'gridTemplateColumns' : 'gridTemplateRows', [`repeat(${m[2]}, 1fr)`]),
+        ],
+        [
+          /^(col|row)-span-(\d+|full)$/,
+          (m) => assign(s, m[1] === 'col' ? 'gridColumn' : 'gridRow', m[2] === 'full' ? '1 / -1' : `span ${m[2]}`),
+        ],
+        [
+          /^(w|h|size)-(.+)$/,
+          (m) => {
+            const v = length(m[2]!, true);
+            if (v === null) return false;
+            if (m[1] !== 'h') size.width = v;
+            if (m[1] !== 'w') size.height = v;
+            return true;
+          },
+        ],
+        [
+          /^(min|max)-(w|h)-(.+)$/,
+          (m) => assign(m[1] === 'min' ? minSize : maxSize, m[2] === 'w' ? 'width' : 'height', length(m[3]!, true)),
+        ],
+        [
+          /^aspect-(.+)$/,
+          (m) => {
+            const named: Record<string, number> = { square: 1, video: 16 / 9 };
+            const arb = arbitrary(m[1]!);
+            const f = arb ? /^([\d.]+)\s*\/\s*([\d.]+)$/.exec(arb) : null;
+            return assign(s, 'aspectRatio', named[m[1]!] ?? (f ? Number(f[1]) / Number(f[2]) : null));
+          },
+        ],
+        [
+          /^(p|m)([xytrblse]?)-(.+)$/,
+          (m) => {
+            const v = sign(length(m[3]!, m[1] === 'm'));
+            if (v === null) return false;
+            edges(m[1] === 'p' ? padding : margin, m[2]!, v);
+            return true;
+          },
+        ],
+        [
+          /^(inset(?:-x|-y)?|top|right|bottom|left)-(.+)$/,
+          (m) => {
+            const v = sign(length(m[2]!, true));
+            if (v === null) return false;
+            const side = m[1] === 'inset' ? '' : m[1] === 'inset-x' ? 'x' : m[1] === 'inset-y' ? 'y' : m[1]![0]!;
+            edges(inset, side, v);
+            return true;
+          },
+        ],
+        [/^z-(\d+)$/, (m) => assign(s, 'zIndex', Number(m[1]) * (neg ? -1 : 1))],
+        [/^opacity-(\d+)$/, (m) => assign(s, 'opacity', Number(m[1]) / 100)],
+        [/^text-(left|center|right|justify|start|end)$/, (m) => assign(s, 'textAlign', m[1])],
+        [
+          /^text-(.+)$/,
+          (m) => {
+            const named = (theme.fontSize as Record<string, readonly [number, number]>)[m[1]!];
+            if (named) {
+              s.fontSize = named[0];
+              s.lineHeight = named[1];
+              return true;
+            }
+            const arb = arbitrary(m[1]!);
+            if (arb && /^[\d.]+(px|rem)?$/.test(arb)) return assign(s, 'fontSize', length(m[1]!));
+            return assign(s, 'color', colorOf(m[1]!));
+          },
+        ],
+        [
+          /^font-(.+)$/,
+          (m) => {
+            const arb = arbitrary(m[1]!);
+            const w =
+              (theme.fontWeight as Record<string, number>)[m[1]!] ?? (arb && NUMBER.test(arb) ? Number(arb) : null);
+            return assign(s, 'fontWeight', w);
+          },
+        ],
+        [
+          /^tracking-(.+)$/,
+          (m) => {
+            const t = (theme.tracking as Record<string, number>)[m[1]!];
+            if (t === undefined) return false;
+            tracking = neg ? -t : t;
+            return true;
+          },
+        ],
+        [
+          /^leading-(.+)$/,
+          (m) => {
+            const named = (theme.leading as Record<string, number>)[m[1]!] ?? (m[1] === 'none' ? 1 : undefined);
+            if (named !== undefined) {
+              leading = { mult: named };
+              return true;
+            }
+            const v = length(m[1]!);
+            if (typeof v !== 'number') return false;
+            leading = { px: v };
+            return true;
+          },
+        ],
+        [
+          /^rounded(?:-(t|r|b|l|tl|tr|br|bl))?(?:-(.+))?$/,
+          (m) => {
+            const r = radius(m[2]);
+            if (r === null) return false;
+            const which: Record<string, number[]> = {
+              t: [0, 1],
+              r: [1, 2],
+              b: [2, 3],
+              l: [0, 3],
+              tl: [0],
+              tr: [1],
+              br: [2],
+              bl: [3],
+            };
+            for (const i of m[1] ? which[m[1]]! : [0, 1, 2, 3]) corners[i] = r;
+            return true;
+          },
+        ],
+        [/^border-(\d+)$/, (m) => assign(s, 'border', Number(m[1]))],
+        [/^border-(.+)$/, (m) => assign(s, 'borderColor', colorOf(m[1]!))],
+        [/^shadow-(.+)$/, (m) => assign(s, 'shadow', (theme.shadow as Record<string, unknown>)[m[1]!])],
+        [
+          /^(backdrop-)?blur(?:-(.+))?$/,
+          (m) => {
+            const arb = m[2] === undefined ? null : arbitrary(m[2]);
+            const v =
+              m[2] === undefined
+                ? 8
+                : m[2] === 'none'
+                  ? 0
+                  : ((theme.blur as Record<string, number>)[m[2]] ?? (arb ? Number.parseFloat(arb) : null));
+            return assign(s, m[1] ? 'backdropBlur' : 'blur', v);
+          },
+        ],
+        [/^mix-blend-(.+)$/, (m) => assign(s, 'blendMode', BLEND.has(m[1]!) || m[1] === 'normal' ? m[1] : null)],
+        [
+          /^bg-(?:linear|gradient)-to-(\w+)$/,
+          (m) => {
+            const angle = GRADIENT_DIR[m[1]!];
+            if (angle === undefined) return false;
+            gradient = { ...(gradient as object | null), angle };
+            return true;
+          },
+        ],
+        [
+          /^bg-linear-(\d+)$/,
+          (m) => {
+            gradient = { ...(gradient as object | null), angle: Number(m[1]) * (neg ? -1 : 1) };
+            return true;
+          },
+        ],
+        [
+          /^(from|via|to)-(.+)$/,
+          (m) => {
+            const c = colorOf(m[2]!);
+            if (!c) return false;
+            gradient = { angle: 180, ...(gradient as object | null), [m[1]!]: c };
+            return true;
+          },
+        ],
+        [/^bg-(.+)$/, (m) => assign(s, 'background', colorOf(m[1]!))],
+        [
+          /^scale-(x-|y-)?(\d+)$/,
+          (m) => assign(transform, m[1] === 'x-' ? 'scaleX' : m[1] === 'y-' ? 'scaleY' : 'scale', Number(m[2]) / 100),
+        ],
+        [
+          /^rotate-(.+)$/,
+          (m) => {
+            const arb = arbitrary(m[1]!);
+            const v = arb ? Number.parseFloat(arb) : Number(m[1]);
+            return assign(transform, 'rotate', Number.isNaN(v) ? null : neg ? -v : v);
+          },
+        ],
+        [
+          /^translate-(x|y)-(.+)$/,
+          (m) => {
+            const v = sign(length(m[2]!));
+            return assign(transform, m[1] === 'x' ? 'translateX' : 'translateY', typeof v === 'number' ? v : null);
+          },
+        ],
+        [/^origin-(.+)$/, (m) => assign(s, 'transformOrigin', ORIGIN[m[1]!])],
+      ];
+      for (const [re, apply] of rules) {
+        const m = re.exec(cls);
+        if (m) return apply(m);
       }
-      if ((m = /^basis-(.+)$/.exec(cls))) {
-        const v = length(m[1]!, true);
-        return v === null ? false : ((s.flexBasis = v as never), true);
-      }
-      if ((m = /^grid-(cols|rows)-(\d+)$/.exec(cls))) {
-        s[m[1] === 'cols' ? 'gridTemplateColumns' : 'gridTemplateRows'] = [`repeat(${m[2]}, 1fr)`];
-        return true;
-      }
-      if ((m = /^(col|row)-span-(\d+|full)$/.exec(cls))) {
-        s[m[1] === 'col' ? 'gridColumn' : 'gridRow'] = (m[2] === 'full' ? '1 / -1' : `span ${m[2]}`) as never;
-        return true;
-      }
-      if ((m = /^(w|h|size)-(.+)$/.exec(cls))) {
-        const v = length(m[2]!, true);
-        if (v === null) return false;
-        if (m[1] !== 'h') size.width = v;
-        if (m[1] !== 'w') size.height = v;
-        return true;
-      }
-      if ((m = /^(min|max)-(w|h)-(.+)$/.exec(cls))) {
-        const v = length(m[3]!, true);
-        if (v === null) return false;
-        (m[1] === 'min' ? minSize : maxSize)[m[2] === 'w' ? 'width' : 'height'] = v;
-        return true;
-      }
-      if ((m = /^aspect-(.+)$/.exec(cls))) {
-        const named: Record<string, number> = { square: 1, video: 16 / 9 };
-        const arb = arbitrary(m[1]!);
-        const f = arb ? /^([\d.]+)\s*\/\s*([\d.]+)$/.exec(arb) : null;
-        const v = named[m[1]!] ?? (f ? Number(f[1]) / Number(f[2]) : null);
-        return v === null ? false : ((s.aspectRatio = v), true);
-      }
-      if ((m = /^(p|m)([xytrblse]?)-(.+)$/.exec(cls))) {
-        const v = sign(length(m[3]!, m[1] === 'm'));
-        if (v === null) return false;
-        edges(m[1] === 'p' ? padding : margin, m[2]!, v);
-        return true;
-      }
-      if ((m = /^(inset(?:-x|-y)?|top|right|bottom|left)-(.+)$/.exec(cls))) {
-        const v = sign(length(m[2]!, true));
-        if (v === null) return false;
-        const side = m[1] === 'inset' ? '' : m[1] === 'inset-x' ? 'x' : m[1] === 'inset-y' ? 'y' : m[1]![0]!;
-        edges(inset, side, v);
-        return true;
-      }
-      if ((m = /^z-(\d+)$/.exec(cls))) return ((s.zIndex = Number(m[1]) * (neg ? -1 : 1)), true);
-      if ((m = /^opacity-(\d+)$/.exec(cls))) return ((s.opacity = Number(m[1]) / 100), true);
-      if ((m = /^text-(left|center|right|justify|start|end)$/.exec(cls))) return ((s.textAlign = m[1] as never), true);
-      if ((m = /^text-(.+)$/.exec(cls))) {
-        const named = (theme.fontSize as Record<string, readonly [number, number]>)[m[1]!];
-        if (named) {
-          s.fontSize = named[0];
-          s.lineHeight = named[1];
-          return true;
-        }
-        const arb = arbitrary(m[1]!);
-        if (arb && /^[\d.]+(px|rem)?$/.test(arb)) return ((s.fontSize = length(m[1]!) as number), true);
-        const c = colorOf(m[1]!);
-        return c ? ((s.color = c), true) : false;
-      }
-      if ((m = /^font-(.+)$/.exec(cls))) {
-        const w = (theme.fontWeight as Record<string, number>)[m[1]!];
-        const arb = arbitrary(m[1]!);
-        if (w !== undefined) return ((s.fontWeight = w), true);
-        if (arb && NUMBER.test(arb)) return ((s.fontWeight = Number(arb)), true);
-        return false;
-      }
-      if ((m = /^tracking-(.+)$/.exec(cls))) {
-        const t = (theme.tracking as Record<string, number>)[m[1]!];
-        return t === undefined ? false : ((tracking = neg ? -t : t), true);
-      }
-      if ((m = /^leading-(.+)$/.exec(cls))) {
-        const named = (theme.leading as Record<string, number>)[m[1]!];
-        if (named !== undefined) return ((leading = { mult: named }), true);
-        if (m[1] === 'none') return ((leading = { mult: 1 }), true);
-        const v = length(m[1]!);
-        return typeof v === 'number' ? ((leading = { px: v }), true) : false;
-      }
-      if ((m = /^rounded(?:-(t|r|b|l|tl|tr|br|bl))?(?:-(.+))?$/.exec(cls))) {
-        const r = radius(m[2]);
-        if (r === null) return false;
-        const which: Record<string, number[]> = {
-          t: [0, 1],
-          r: [1, 2],
-          b: [2, 3],
-          l: [0, 3],
-          tl: [0],
-          tr: [1],
-          br: [2],
-          bl: [3],
-        };
-        for (const i of m[1] ? which[m[1]]! : [0, 1, 2, 3]) corners[i] = r;
-        return true;
-      }
-      if ((m = /^border-(\d+)$/.exec(cls))) return ((s.border = Number(m[1])), true);
-      if ((m = /^border-(.+)$/.exec(cls))) {
-        const c = colorOf(m[1]!);
-        return c ? ((s.borderColor = c), true) : false;
-      }
-      if ((m = /^shadow-(.+)$/.exec(cls))) {
-        const sh = (theme.shadow as Record<string, unknown>)[m[1]!];
-        return sh ? ((s.shadow = sh as Shadow[]), true) : false;
-      }
-      if ((m = /^(backdrop-)?blur(?:-(.+))?$/.exec(cls))) {
-        const v =
-          m[2] === undefined
-            ? 8
-            : m[2] === 'none'
-              ? 0
-              : ((theme.blur as Record<string, number>)[m[2]] ??
-                (arbitrary(m[2]) ? Number.parseFloat(arbitrary(m[2])!) : null));
-        if (v === null) return false;
-        s[m[1] ? 'backdropBlur' : 'blur'] = v;
-        return true;
-      }
-      if ((m = /^mix-blend-(.+)$/.exec(cls)) && (BLEND.has(m[1]!) || m[1] === 'normal'))
-        return ((s.blendMode = m[1]!), true);
-      if ((m = /^bg-(?:linear|gradient)-to-(\w+)$/.exec(cls)) && GRADIENT_DIR[m[1]!] !== undefined) {
-        gradient = { ...(gradient as object | null), angle: GRADIENT_DIR[m[1]!]! };
-        return true;
-      }
-      if ((m = /^bg-linear-(\d+)$/.exec(cls))) {
-        gradient = { ...(gradient as object | null), angle: Number(m[1]) * (neg ? -1 : 1) };
-        return true;
-      }
-      if ((m = /^(from|via|to)-(.+)$/.exec(cls))) {
-        const c = colorOf(m[2]!);
-        if (!c) return false;
-        gradient = { angle: 180, ...(gradient as object | null), [m[1]!]: c };
-        return true;
-      }
-      if ((m = /^bg-(.+)$/.exec(cls))) {
-        const c = colorOf(m[1]!);
-        return c ? ((s.background = c), true) : false;
-      }
-      if ((m = /^scale-(x-|y-)?(\d+)$/.exec(cls))) {
-        const v = Number(m[2]) / 100;
-        if (m[1] === 'x-') transform.scaleX = v;
-        else if (m[1] === 'y-') transform.scaleY = v;
-        else transform.scale = v;
-        return true;
-      }
-      if ((m = /^rotate-(.+)$/.exec(cls))) {
-        const arb = arbitrary(m[1]!);
-        const v = arb ? Number.parseFloat(arb) : Number(m[1]);
-        return Number.isNaN(v) ? false : ((transform.rotate = neg ? -v : v), true);
-      }
-      if ((m = /^translate-(x|y)-(.+)$/.exec(cls))) {
-        const v = sign(length(m[2]!));
-        if (typeof v !== 'number') return false;
-        transform[m[1] === 'x' ? 'translateX' : 'translateY'] = v;
-        return true;
-      }
-      if ((m = /^origin-(.+)$/.exec(cls)) && ORIGIN[m[1]!]) return ((s.transformOrigin = ORIGIN[m[1]!]), true);
       return false;
     })();
     if (!ok) unknown.push(raw);

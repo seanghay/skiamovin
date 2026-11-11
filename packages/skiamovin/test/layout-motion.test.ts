@@ -64,7 +64,7 @@ test('layoutId: layout changes spring instead of jumping, the same in any render
 
 test('layoutId across sequences: a shared element moves into its new place', async () => {
   await init();
-  const shared = (ctx: RenderContext): Child =>
+  const shared = (_ctx: RenderContext): Child =>
     box({ size: { width: '100%', height: '100%' } }, [
       sequence({ start: 0, end: 1 }, () =>
         box({
