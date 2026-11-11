@@ -180,13 +180,21 @@ changes.
 | Captions | Diffusion Studio, Premiere | A captions node that reads SRT or VTT files with word timings, with style presets and word-by-word reveals |
 | Music-driven animation | Coldtype | Read MIDI files into note events (`midi(asset).notes`) and add beat and onset detection next to `analyzeAudio` |
 
-## Phase 7: Camera, film and finishing (in progress)
+## Phase 7: Camera, film and finishing (mostly done)
 
 The tools that make a video look filmed and finished rather than just animated.
 
-Implemented: motion blur, shot sizes with rule-of-thirds placement, camera moves, handheld shake, cutting between
-cameras, plain names for the basic transitions, loudness normalization, delivery presets, hand-drawn strokes,
-scattering and `lookAt`. Not yet: the rest of the tables below.
+Implemented: motion blur, soft shadows, look presets (including a polarizer look), depth of field for `space3d`,
+shot sizes with rule-of-thirds placement, camera angle presets, camera moves, handheld shake, cutting between
+cameras, plain names for the basic transitions, title cards, lower thirds and credits, music ducking under dialogue,
+loudness normalization, audio roles and stems, variants (`--variants` on the command line), delivery presets,
+hand-drawn strokes, clean shapes from rough input, holds for animating on twos, radial symmetry, keyframe curves
+with handles, action strips, `lookAt`, shape keys, two-bone IK, modifier stacks for paths, scattering and lens
+distortion.
+
+Not yet: high-precision (half-float) drawing and grading, tone mapping, sharper scaling defaults, matching shots
+across clips, proxies, drivers and framing guides in the studio, puppet pins, `followPath`/`copyTransform`
+constraints as named helpers (`alongPath` and `lookAt` cover the common cases), and bloom beyond the `glow` effect.
 
 ### Camera and image quality
 
@@ -286,8 +294,8 @@ project inspired by it and is no longer maintained, so we won't depend on it. We
   - composition guide overlays (thirds, title safe).
 - **Render API.** `renderPartial({ workerId, workers })` for splitting a render across machines, with audio
   rendered separately and combined once at the end. A small render server. No telemetry.
-- **The `npx skiamovin` CLI** for rendering stills and videos, plus inspection commands that print JSON
-  (probe, filmstrip, waveform, check for black frames).
+- **The `npx skiamovin` CLI** (done: `render`, `still`, `sheet`, `inspect` and `info`). Still to come: waveform
+  and black-frame checks.
 - **Docs with live examples.** Each guide page gets a small composition you can play in the browser.
 
 ## Licenses
