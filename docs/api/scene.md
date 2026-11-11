@@ -452,6 +452,34 @@ top-level `await`.
 
 ---
 
+## Color grading
+
+Set `grade` on any node to grade it and everything inside it. Grades apply in order, and each takes a `strength`
+from 0 to 1 that can be animated.
+
+```ts
+const film = new LutAsset(new UrlSource('/luts/film.cube'));
+
+box({ grade: [lut(film, { strength: 0.8 }), adjust({ contrast: 0.15, vibrance: 0.2, fade: 0.1 })] }, [...])
+```
+
+| Function | Description |
+|---|---|
+| `lut(asset, { interpolation?, strength? })` | A 3D LUT. Tetrahedral interpolation by default (the method the `.cube` spec recommends); output matches ffmpeg's `lut3d` within 2/255 |
+| `adjust({ exposure, brightness, contrast, saturation, vibrance, warmth, tint, highlights, shadows, fade })` | Photo-editor adjustments. Exposure is in stops and applied in linear light |
+| `curves({ rgb, red, green, blue })` | Tone curves through `[input, output]` points, smoothed without overshoot |
+| `levels({ inBlack, inWhite, gamma, outBlack, outWhite })` | Input and output levels |
+| `gradeWheels({ lift, gamma, gain, offset })` | Grading wheels, as numbers or `[r, g, b]` |
+| `cdl({ slope, offset, power, saturation })` | An ASC CDL grade |
+| `gradientMap(stops)` | Colors by brightness; two stops make a duotone |
+| `channelMixer({ red, green, blue })`, `posterize(levels)`, `threshold(level)` |  |
+| `blendGrades(from, to, t)` | Blends two looks, for changing the grade across a scene |
+
+`LutAsset(source, { layout? })` loads `.cube` files (3D, or 1D expanded to 3D, with `DOMAIN_MIN`/`DOMAIN_MAX`
+and Resolve's input ranges) and LUT images: square grids of slices (such as 512×512 with 64 slices), horizontal
+strips and Hald images (`layout: 'hald'`). `parseCube(text)` exposes the parser. Grades work on unpremultiplied
+color, and LUTs are stored as half floats so 8-bit banding doesn't creep in.
+
 ## Animation
 
 ### `interpolate`

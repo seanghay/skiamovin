@@ -13,6 +13,7 @@ import {
 } from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
+import type { Grade } from './grading.ts';
 
 // Render context
 
@@ -99,6 +100,8 @@ export interface VisualStyle {
   backdropBlur?: number;
   filter?: ImageFilter;
   colorFilter?: ColorFilter;
+  /** Color grading for this node and everything inside it, applied in order. See `lut`, `adjust`, `curves`. */
+  grade?: Grade | readonly Grade[];
   blendMode?: BlendMode | string;
   zIndex?: number;
   mask?: SceneNode;

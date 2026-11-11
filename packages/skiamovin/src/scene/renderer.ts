@@ -16,6 +16,7 @@ import { M44, Matrix, Rect, RRect } from '../core/geometry.ts';
 import { _sharedGlCanvas, type DirectContext, gpu } from '../core/gpu.ts';
 import {
   type Canvas,
+  colorFilters,
   type Image,
   type ImageFilter,
   ImageInfo,
@@ -35,6 +36,7 @@ import { borrowImageFromVideoSample, drawFit } from '../media/index.ts';
 import { type Style, TaffyTree } from '../taffy/index.ts';
 import { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Composition } from './composition.ts';
+import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
   type AudioClip,
   type Gradient,
@@ -438,6 +440,7 @@ export class FrameRenderer {
           else if (c && typeof c === 'object' && 'type' in c) visit(c as SceneNode);
         }
       if (n.style.mask) visit(n.style.mask);
+      for (const lutAsset of lutAssetsOf(n.style.grade)) if (!lutAsset._loaded()) loads.push(lutAsset._get());
       n.children.forEach(visit);
     };
     nodes.forEach(visit);
@@ -692,7 +695,8 @@ export class FrameRenderer {
     // Group effects need a layer.
     let layer = false;
     const filters: ImageFilter[] = [];
-    if (opacity < 1 || st.blur || st.filter || st.colorFilter || st.blendMode || st.mask) {
+    const graded = st.grade ? resolveGrades(st.grade) : null;
+    if (opacity < 1 || st.blur || st.filter || st.colorFilter || graded || st.blendMode || st.mask) {
       layer = true;
       const p = new Paint();
       if (opacity < 1) p.setAlphaf(Math.max(0, opacity));
@@ -703,7 +707,11 @@ export class FrameRenderer {
         f = bl;
       }
       if (f) p.setImageFilter(f);
-      if (st.colorFilter) p.setColorFilter(st.colorFilter);
+      const cf =
+        graded && st.colorFilter
+          ? (colorFilters.compose(graded, st.colorFilter) ?? graded)
+          : (graded ?? st.colorFilter);
+      if (cf) p.setColorFilter(cf);
       if (st.blendMode !== undefined)
         p.setBlendMode(
           typeof st.blendMode === 'string' ? (BLEND_MODE_NAMES[st.blendMode] ?? BlendMode.SrcOver) : st.blendMode,

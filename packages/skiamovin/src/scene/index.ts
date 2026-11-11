@@ -24,10 +24,25 @@ export {
   Timeline,
   wiggle,
 } from './animation.ts';
-export type { AssetSource, AudioAnalysis, FontAssetOptions } from './assets.ts';
-export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, readSource, SvgAsset } from './assets.ts';
+export type { AssetSource, AudioAnalysis, FontAssetOptions, LutAssetOptions } from './assets.ts';
+export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, LutAsset, readSource, SvgAsset } from './assets.ts';
 export type { CompositionOptions } from './composition.ts';
 export { Composition, CompositionModule } from './composition.ts';
+export type { AdjustOptions, CurvesOptions, Grade, LevelsOptions, ParsedLut } from './grading.ts';
+export {
+  adjust,
+  blendGrades,
+  cdl,
+  channelMixer,
+  curves,
+  gradeWheels,
+  gradientMap,
+  levels,
+  lut,
+  parseCube,
+  posterize,
+  threshold,
+} from './grading.ts';
 export type {
   Child,
   Fit,

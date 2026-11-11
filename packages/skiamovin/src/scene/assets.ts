@@ -1,10 +1,12 @@
 // Assets that load lazily from Mediabunny Sources.
 import { AudioSampleSink, BufferSource, type Input, type InputAudioTrack, Source } from 'mediabunny';
+import { AlphaType, ColorType, TileMode } from '../core/enums.ts';
 import { SkiamovinError } from '../core/errors.ts';
-import { Codec, Image } from '../core/skia.ts';
+import { Codec, Image, ImageInfo, images, type Shader } from '../core/skia.ts';
 import { svg } from '../core/svg.ts';
 import { FontMgr, type Typeface } from '../core/text.ts';
 import { importNode } from '../native/node-import.ts';
+import { type ParsedLut, parseCube } from './grading.ts';
 
 export type AssetSource = Source | Uint8Array | ArrayBuffer | string | URL;
 
@@ -263,4 +265,115 @@ export async function analyzeAudio(
     getRms: (t) => rms[idx(t)] ?? 0,
     getBands: (t) => bands[idx(t)] ?? new Float32Array(nb),
   };
+}
+
+/** A LUT loaded and packed for the GPU. */
+interface LoadedLut {
+  size: number;
+  /** Tiles per row in the packed image. */
+  cols: number;
+  domainMin: [number, number, number];
+  domainScale: [number, number, number];
+  image: Image;
+  shader: Shader;
+}
+
+export interface LutAssetOptions {
+  /**
+   * How LUT images are laid out: 'tiles' (a square grid of slices, like 512×512 with 64 slices), 'strip' (slices
+   * side by side) or 'hald'. Default: 'strip' when the width is the height squared, otherwise 'tiles'.
+   */
+  layout?: 'tiles' | 'strip' | 'hald';
+}
+
+/** Converts a float to IEEE half precision bits. */
+function toHalf(v: number): number {
+  const f = new Float32Array([v]);
+  const x = new Uint32Array(f.buffer)[0]!;
+  const sign = (x >>> 16) & 0x8000;
+  const exp = ((x >>> 23) & 0xff) - 127 + 15;
+  const mant = x & 0x7fffff;
+  if (exp <= 0) return sign;
+  if (exp >= 31) return sign | 0x7c00;
+  return sign | (exp << 10) | (mant >>> 13);
+}
+
+/** A color lookup table from a `.cube` file or a LUT image (PNG). Use with `lut()` in a node's `grade`. */
+export class LutAsset extends Asset<LoadedLut> {
+  readonly options: LutAssetOptions;
+  constructor(source: AssetSource, options: LutAssetOptions = {}) {
+    super(source);
+    this.options = options;
+  }
+  protected decode(bytes: Uint8Array): LoadedLut {
+    const isImage = (bytes[0] === 0x89 && bytes[1] === 0x50) || (bytes[0] === 0xff && bytes[1] === 0xd8);
+    const lut = isImage ? this.#fromImage(bytes) : parseCube(new TextDecoder().decode(bytes));
+    return pack(lut);
+  }
+  #fromImage(bytes: Uint8Array): ParsedLut {
+    const img = Image.fromEncoded(bytes);
+    if (!img) throw new SkiamovinError('LutAsset: could not decode the LUT image');
+    const w = img.width(),
+      h = img.height();
+    const px = img.readPixels(0, 0, new ImageInfo(w, h, ColorType.RGBA_8888, AlphaType.Unpremul));
+    img.delete();
+    const layout = this.options.layout ?? (w === h * h ? 'strip' : 'tiles');
+    let n: number;
+    let at: (r: number, g: number, b: number) => number;
+    if (layout === 'hald') {
+      const level = Math.round(Math.cbrt(w));
+      n = level * level;
+      at = (r, g, b) => r + n * g + n * n * b;
+      if (level ** 3 !== w || w !== h) throw new SkiamovinError('LutAsset: a Hald image must be level³ pixels square');
+    } else if (layout === 'strip') {
+      n = h;
+      at = (r, g, b) => g * w + b * n + r;
+    } else {
+      // Square grid of slices: n³ = w·h, with sqrt(n) slices per row when n is a perfect square.
+      n = Math.round(Math.cbrt(w * h));
+      const cols = Math.round(w / n);
+      at = (r, g, b) => (Math.floor(b / cols) * n + g) * w + (b % cols) * n + r;
+      if (n ** 3 !== w * h) throw new SkiamovinError('LutAsset: the image size does not match a square LUT layout');
+    }
+    const data = new Float32Array(n * n * n * 3);
+    for (let b = 0; b < n; b++)
+      for (let g = 0; g < n; g++)
+        for (let r = 0; r < n; r++) {
+          const src = at(r, g, b) * 4,
+            dst = (r + n * g + n * n * b) * 3;
+          data[dst] = px[src]! / 255;
+          data[dst + 1] = px[src + 1]! / 255;
+          data[dst + 2] = px[src + 2]! / 255;
+        }
+    return { size: n, data, domainMin: [0, 0, 0], domainMax: [1, 1, 1] };
+  }
+}
+
+/** Packs a cube into a half-float image of square tiles, one tile per blue slice. */
+function pack(lut: ParsedLut): LoadedLut {
+  const n = lut.size;
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  const w = n * cols,
+    h = n * rows;
+  const half = new Uint16Array(w * h * 4);
+  for (let b = 0; b < n; b++) {
+    const ox = (b % cols) * n,
+      oy = Math.floor(b / cols) * n;
+    for (let g = 0; g < n; g++)
+      for (let r = 0; r < n; r++) {
+        const src = (r + n * g + n * n * b) * 3;
+        const dst = ((oy + g) * w + ox + r) * 4;
+        half[dst] = toHalf(lut.data[src]!);
+        half[dst + 1] = toHalf(lut.data[src + 1]!);
+        half[dst + 2] = toHalf(lut.data[src + 2]!);
+        half[dst + 3] = 0x3c00;
+      }
+  }
+  const info = new ImageInfo(w, h, ColorType.RGBA_F16, AlphaType.Unpremul);
+  const image = images.rasterFromPixels(info, new Uint8Array(half.buffer), w * 8);
+  if (!image) throw new SkiamovinError('LutAsset: could not create the LUT image');
+  const shader = image.makeShader(TileMode.Clamp, TileMode.Clamp, 'nearest');
+  const scale = lut.domainMax.map((mx, i) => 1 / Math.max(1e-9, mx - lut.domainMin[i]!)) as [number, number, number];
+  return { size: n, cols, domainMin: lut.domainMin, domainScale: scale, image, shader };
 }
