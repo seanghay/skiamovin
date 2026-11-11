@@ -64,6 +64,35 @@ export {
   video,
 } from './nodes.ts';
 export { alongPath, morphPath } from './paths.ts';
+export type {
+  DecayOptions,
+  FallOptions,
+  FlingOptions,
+  GesturePoint,
+  SpringFeel,
+  SpringParams,
+  SpringPathOptions,
+  SpringPhysics,
+  SpringTarget,
+} from './physics.ts';
+export {
+  attachmentSpring,
+  decay,
+  decayDuration,
+  decelerationRates,
+  fall,
+  fling,
+  gesture,
+  motions,
+  projectedEnd,
+  rubberBand,
+  snapSpring,
+  springConstants,
+  springPath,
+  springSettlingTime,
+  springState,
+  springs,
+} from './physics.ts';
 export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';

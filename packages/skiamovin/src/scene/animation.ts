@@ -1,6 +1,7 @@
 // Animation helpers. All are pure functions of time, so frames can be rendered in any order.
 import { Color as C, type Color, toColor4f } from '../core/color.ts';
 import { ContourMeasureIter, Path } from '../core/skia.ts';
+import { type SpringParams, springConstants, springSettlingTime, springState } from './physics.ts';
 
 export type EasingFunction = (t: number) => number;
 
@@ -173,6 +174,15 @@ export const Easing = {
   },
   piecewise,
   custom: customEase,
+  /**
+   * A spring as an ease from 0 to 1, stretched over the tween's duration. Give the tween the spring's natural
+   * length with `springSettlingTime(params)` to keep its feel.
+   */
+  spring(params: SpringParams): EasingFunction {
+    const { omega, zeta } = springConstants(params);
+    const settle = springSettlingTime(params);
+    return (t) => (t >= 1 ? 1 : 1 + springState(t * settle, -1, 0, omega, zeta)[0]);
+  },
   /** A jittery ease that still starts at 0 and ends at 1. Seeded, so it's the same every render. */
   irregular(seed: string | number, options: { points?: number; strength?: number } = {}): EasingFunction {
     const n = Math.max(2, options.points ?? 20);
@@ -353,6 +363,12 @@ export interface SpringOptions {
   overshootClamping?: boolean;
   /** Stretch the spring so it settles in exactly this many seconds. */
   duration?: number;
+  /** Time of one oscillation in seconds, as in SwiftUI. Use with `bounce` instead of mass, stiffness and damping. */
+  response?: number;
+  /** 0 for no overshoot, up to 1 for a lot. Negative is sluggish. Use with `response`. */
+  bounce?: number;
+  /** Starting speed in value units per second. */
+  velocity?: number;
 }
 
 /** Offset from the target of a spring released at rest from -1. Progress is 1 minus this value. */
@@ -381,23 +397,49 @@ function settleTime(mass: number, stiffness: number, damping: number, threshold 
   return last + step;
 }
 
+function paramsOf(o: Omit<SpringOptions, 'timestamp'>): {
+  omega: number;
+  zeta: number;
+  mass: number;
+  stiffness: number;
+  damping: number;
+} {
+  if (o.response !== undefined) return springConstants({ response: o.response, bounce: o.bounce });
+  return springConstants({ mass: o.mass ?? 1, stiffness: o.stiffness ?? 100, damping: o.damping ?? 10 });
+}
+
 /** Spring motion, computed directly from the timestamp. */
 export function spring(options: SpringOptions): number {
-  const { from = 0, to = 1, delay = 0, mass = 1, stiffness = 100, damping = 10, overshootClamping = false } = options;
+  const { from = 0, to = 1, delay = 0, overshootClamping = false, velocity = 0 } = options;
   let t = options.timestamp - delay;
   if (t <= 0) return from;
+  const c = paramsOf(options);
   if (options.duration !== undefined && options.duration > 0)
-    t *= settleTime(mass, stiffness, damping) / options.duration;
-  let p = 1 - springX(t, mass, stiffness, damping);
-  if (overshootClamping) p = Math.min(1, p);
-  return from + (to - from) * p;
+    t *= settleTime(c.mass, c.stiffness, c.damping) / options.duration;
+  const [x] = springState(t, from - to, velocity, c.omega, c.zeta);
+  let value = to + x;
+  if (overshootClamping) value = from <= to ? Math.min(to, value) : Math.max(to, value);
+  return value;
 }
+
+/** Speed of a spring at the timestamp, value units per second. */
+spring.velocity = (options: SpringOptions): number => {
+  const { from = 0, to = 1, delay = 0, velocity = 0 } = options;
+  const t = options.timestamp - delay;
+  if (t <= 0) return velocity;
+  const c = paramsOf(options);
+  let scale = 1;
+  if (options.duration !== undefined && options.duration > 0)
+    scale = settleTime(c.mass, c.stiffness, c.damping) / options.duration;
+  return springState(t * scale, from - to, velocity, c.omega, c.zeta)[1] * scale;
+};
 
 /** Seconds until the spring comes to rest (|displacement| < 0.1%). */
 spring.computeSettleTime = (options: Omit<SpringOptions, 'timestamp'> = {}): number => {
-  const { mass = 1, stiffness = 100, damping = 10, delay = 0 } = options;
+  const delay = options.delay ?? 0;
   if (options.duration) return options.duration + delay;
-  return settleTime(mass, stiffness, damping) + delay;
+  const c = paramsOf(options);
+  return settleTime(c.mass, c.stiffness, c.damping) + delay;
 };
 
 // Random numbers and noise

@@ -629,6 +629,37 @@ counter(value, { decimals?, locale?, prefix?, suffix?, grouping? }): string // u
 graphemeCount(text, locale?): number                                       // for visibleGraphemes
 ```
 
+### Physics-based motion
+
+Springs, momentum and simple dynamics in the style of Apple's interfaces. All are solved exactly from the
+timestamp.
+
+```ts
+spring({ timestamp, from?, to?, delay?, response?, bounce?, velocity?, mass?, stiffness?, damping?, duration? }): number
+spring.velocity(options): number
+springs.smooth | springs.snappy | springs.bouncy | springs.interactive | springs.system   // { response, bounce }
+springConstants({ response, bounce } | { mass?, stiffness, damping }): { omega, zeta, stiffness, damping, mass }
+springSettlingTime(params, epsilon?): number
+Easing.spring(params): EasingFunction
+```
+
+`response` and `bounce` use SwiftUI's formula: stiffness = (2π / response)², damping ratio = 1 − bounce, mass 1.
+`springs.*` are SwiftUI's presets: `spring({ timestamp, ...springs.snappy })`.
+
+| Function | Description |
+|---|---|
+| `springPath({ timestamp, from, targets: [{ at, to }], spring?, velocity?, mode? })` | A value whose target changes over time, without jumps. `mode: 'add'` (default) adds a spring per change, like UIKit; `'merge'` carries position and speed, like SwiftUI. Returns `[value, velocity]` |
+| `decay({ timestamp, from, velocity, rate? })` | Glides to a stop like an iOS scroll view (`rate` 0.998 per ms, or `decelerationRates.fast`) |
+| `projectedEnd(from, velocity, rate?)`, `decayDuration(velocity, rate?, minSpeed?)` | Where and when a fling stops |
+| `rubberBand(offset, limit, constant?)` | Resistance past an edge, with iOS's commonly used 0.55 constant (reverse engineered; Apple doesn't publish it) |
+| `fling({ timestamp, from, velocity, snap?, bounds?, spring? })` | A released fling that snaps to the nearest page or point, or glides and springs back from an edge |
+| `fall({ timestamp, from, velocity?, gravity?, floor?, elasticity? })` | Gravity in UIKit Dynamics units (1 = 1000 per second²), bouncing on a floor |
+| `attachmentSpring(frequency, damping?)`, `snapSpring(damping?)` | Spring settings matching UIKit's attachment and snap behaviors |
+| `gesture(points)` | A scripted drag through `{ t, x, y }` points, with the release speed to pass to `fling` |
+| `motions.sheetUp`, `sheetDown`, `notificationDrop`, `press`, `pop` | Familiar iOS motions as functions of time |
+
+Collisions between bodies come with the physics engine (see the [roadmap](../roadmap.md)).
+
 ### `random` and `noise`
 
 ```ts

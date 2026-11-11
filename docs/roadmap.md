@@ -59,7 +59,9 @@ along a path. Still open: `write()`, masks for split text, and editing time even
 **Done when:** each helper has value tests, the docs have a page per helper, and one new example uses all of
 them.
 
-## Phase 2: Apple-style physics motion
+## Phase 2: Apple-style physics motion (done)
+
+Implemented in `scene/physics.ts`, except collisions between bodies, which wait for the physics engine in Phase 5.
 
 Apple's interfaces feel physical because things move with springs and momentum and can change direction
 without a jump. Product videos and app demos need the same feel. The formulas below match Apple's own SDK

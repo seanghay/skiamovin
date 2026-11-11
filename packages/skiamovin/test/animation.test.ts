@@ -44,6 +44,7 @@ test('easing endpoints', () => {
         'custom',
         'irregular',
         'thereAndBack',
+        'spring',
       ].includes(name)
     )
       continue;
