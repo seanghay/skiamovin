@@ -34,6 +34,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Motion blur | `motionBlur: { shutter, samples }` on a composition: averages moments within the shutter in half-float linear light |
 | Film camera | `shot()` sizes with rule-of-thirds placement, `cameraMove()`, `handheld()`, `edit()` between cameras, and 'dissolve', 'fade' and 'wipe' transition names |
 | Loudness and delivery | `audio.loudness` in `Render` normalizes the mix to a LUFS target (BS.1770 / EBU R128, gated); `deliveryPresets` for YouTube, Instagram, TikTok and broadcast |
+| Sound mix | Audio roles (dialogue, music, effects); music ducks under dialogue clips; stems by role in `Render` and `CompositionAudioSink` |
 | Hand-drawn strokes | `stroke()`: variable-width, tapered strokes from points with pressure or along a path, drawn on over time |
 | Scattering | `scatter()` in an area, along a path or on a grid, seeded; `lookAt()` |
 | 3D space | `space3d()`: flat nodes with 3D placement and a perspective camera, sorted back to front, with backface hiding and camera angle presets; `transform: { matrix }` |

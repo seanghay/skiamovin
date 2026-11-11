@@ -24,7 +24,7 @@ import { importNode } from '../native/node-import.ts';
 import { AudioMixer, buildSchedule } from './audio.ts';
 import { type Composition, CompositionModule } from './composition.ts';
 import { LoudnessMeter, loudnessGain } from './loudness.ts';
-
+import type { AudioRole } from './nodes.ts';
 import { type ChunkJob, DEFAULT_VIDEO_QUALITY, frameSample } from './render-chunk.ts';
 import { FrameRenderer, type GpuChoice } from './renderer.ts';
 import { CompositionWorker, type WorkerFactory } from './worker.ts';
@@ -59,6 +59,8 @@ export interface RenderOptions<Props> {
      * below −1 dBFS.
      */
     loudness?: number;
+    /** Only these roles, for exporting stems. Clips without a role count as `'effects'`. */
+    roles?: AudioRole[];
   };
   trim?: { start?: number; end?: number };
   gpu?: GpuChoice;
@@ -83,8 +85,9 @@ async function measureGain(
   start: number,
   duration: number,
   target: number,
+  roles?: AudioRole[],
 ): Promise<number> {
-  const mixer = new AudioMixer(schedule, sampleRate, channels);
+  const mixer = new AudioMixer(schedule, sampleRate, channels, roles);
   const meter = new LoudnessMeter(sampleRate, channels);
   try {
     for (let t = 0; t < duration; t += 1) {
@@ -553,7 +556,12 @@ export class CompositionAudioSink {
   #mixer: Promise<AudioMixer>;
   constructor(
     composition: Composition<any>,
-    options: { props?: Record<string, unknown>; sampleRate?: number; numberOfChannels?: number } = {},
+    options: {
+      props?: Record<string, unknown>;
+      sampleRate?: number;
+      numberOfChannels?: number;
+      roles?: AudioRole[];
+    } = {},
   ) {
     const renderer = new FrameRenderer(composition, { gpu: 'raster', props: options.props, width: 1, height: 1 });
     this.#renderer = renderer;
@@ -561,7 +569,7 @@ export class CompositionAudioSink {
       await init();
       renderer.duration = await composition.computeDuration(options.props as never);
       const schedule = buildSchedule((t) => renderer.collectAudio(t), renderer.duration, composition.frameRate);
-      return new AudioMixer(schedule, options.sampleRate ?? 48000, options.numberOfChannels ?? 2);
+      return new AudioMixer(schedule, options.sampleRate ?? 48000, options.numberOfChannels ?? 2, options.roles);
     })();
   }
   async getSample(timestamp: number): Promise<AudioSample | null> {

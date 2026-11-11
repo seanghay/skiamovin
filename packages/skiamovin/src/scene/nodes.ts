@@ -282,7 +282,13 @@ export interface AudioClip {
   playbackRate: number;
   loop: boolean;
   volume: number | ((timestamp: number) => number);
+  role?: AudioRole;
+  /** Decibels this clip is lowered by while dialogue plays. */
+  duck: number;
 }
+
+/** What an audio clip carries, for ducking and for exporting groups (stems) separately. */
+export type AudioRole = 'dialogue' | 'music' | 'effects';
 
 // Builders
 
@@ -419,6 +425,7 @@ export function video(media: Input | InputVideoTrack, style: NodeStyle & VideoPr
         playbackRate,
         loop,
         volume,
+        duck: 0,
       };
   return { type: 'video', media, fit, sourceTime, muted, audio: clip, style: rest, children: [] };
 }
@@ -430,10 +437,16 @@ export function audio(
     volume?: number | ((timestamp: number) => number);
     playbackRate?: number;
     loop?: boolean;
+    /** `'dialogue'`, `'music'` or `'effects'`. Music ducks under dialogue, and roles can be exported as stems. */
+    role?: AudioRole;
+    /** Decibels to lower this clip while dialogue plays. Default 12 for music, 0 otherwise. */
+    duck?: number;
   } = {},
 ): SceneNode {
   const scope = currentScope();
   const clip: AudioClip = {
+    role: options.role,
+    duck: options.duck ?? (options.role === 'music' ? 12 : 0),
     media,
     absStart: scope.absStart,
     absEnd: scope.absEnd,

@@ -10,7 +10,18 @@ import {
   Mp4OutputFormat,
   Output,
 } from 'mediabunny';
-import { audio, box, Composition, deliveryPresets, LoudnessMeter, loudnessGain, Render } from 'skiamovin/scene';
+import {
+  type AudioRole,
+  audio,
+  box,
+  Composition,
+  CompositionAudioSink,
+  deliveryPresets,
+  LoudnessMeter,
+  loudnessGain,
+  Render,
+  sequence,
+} from 'skiamovin/scene';
 import { OUT, prepareTestMedia } from './fixtures/media.ts';
 
 /** Interleaved stereo sine at `dbfs` peak, with optional silence after it. */
@@ -68,5 +79,46 @@ test('loudness: Render normalizes the mix', async () => {
     s.close();
   }
   assert.ok(Math.abs(meter.integrated() - -14) < 0.5, `${meter.integrated()} LUFS`);
+  tone.dispose();
+});
+
+test('audio roles: music ducks under dialogue, and stems keep one role', async () => {
+  prepareTestMedia();
+  const tone = new Input({ formats: ALL_FORMATS, source: new FilePathSource(`${OUT}tone.mp3`) });
+  const comp = new Composition({
+    width: 10,
+    height: 10,
+    frameRate: 30,
+    duration: 3,
+    render: () => [
+      audio(tone, { role: 'music', volume: 0.3, loop: true }),
+      sequence({ start: 1, end: 2 }, () => audio(tone, { role: 'dialogue', volume: 0.3 })),
+    ],
+  });
+  /** RMS of a stem between two times. */
+  const rms = async (roles: AudioRole[], from: number, to: number) => {
+    const sink = new CompositionAudioSink(comp, { roles });
+    let sum = 0,
+      n = 0;
+    for await (const s of sink.samples()) {
+      const buf = new Float32Array(s.numberOfFrames * 2);
+      s.copyTo(buf, { planeIndex: 0, format: 'f32' });
+      for (let i = 0; i < s.numberOfFrames; i++) {
+        const t = s.timestamp + i / s.sampleRate;
+        if (t >= from && t < to) {
+          sum += buf[i * 2]! ** 2;
+          n++;
+        }
+      }
+      s.close();
+    }
+    return Math.sqrt(sum / Math.max(1, n));
+  };
+  const open = await rms(['music'], 0.2, 0.8);
+  const ducked = await rms(['music'], 1.2, 1.8);
+  const db = 20 * Math.log10(ducked / open);
+  assert.ok(Math.abs(db - -12) < 0.5, `ducked by ${db} dB`);
+  assert.ok((await rms(['dialogue'], 0.2, 0.8)) < 1e-4, 'no dialogue before it starts');
+  assert.ok((await rms(['dialogue'], 1.2, 1.8)) > 0.01, 'dialogue stem');
   tone.dispose();
 });

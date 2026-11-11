@@ -288,10 +288,17 @@ audio(media: Input | InputAudioTrack, options?: {
   volume?: number | ((timestamp: number) => number);
   playbackRate?: number;     // resampled, so the pitch shifts
   loop?: boolean;
+  role?: 'dialogue' | 'music' | 'effects';
+  duck?: number;             // dB to lower it while dialogue plays; default 12 for music, 0 otherwise
 }): SceneNode
 ```
 
 Not drawn. Starts with its enclosing sequence. See [Audio](../guides/audio.md).
+
+Music ducks under dialogue on its own: it eases down 0.15 s before a dialogue clip starts and back up over 0.5 s
+after it ends. This follows when dialogue clips play, not the voice's level, so pauses inside a clip stay ducked.
+Roles also make stems: `Render` and `CompositionAudioSink` take `roles` (such as `audio: { roles: ['music'] }`) to
+mix only those roles. Clips without a role count as effects.
 
 ### `lottie`
 

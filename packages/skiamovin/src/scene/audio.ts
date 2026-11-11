@@ -1,6 +1,6 @@
 // Mixes audible nodes into one stereo float stream.
 import { type AudioSample, AudioSampleSink, type Input, type InputAudioTrack, type InputVideoTrack } from 'mediabunny';
-import type { AudioClip } from './nodes.ts';
+import type { AudioClip, AudioRole } from './nodes.ts';
 
 /** A clip and the time range where it is audible. */
 export interface ScheduledClip extends AudioClip {
@@ -16,7 +16,7 @@ function clipKey(c: AudioClip, ids: WeakMap<object, number>): string {
     id = ++mediaCounter;
     ids.set(c.media as object, id);
   }
-  return `${id}|${c.absStart.toFixed(6)}|${c.trimStart}|${c.trimEnd}|${c.playbackRate}|${c.loop}`;
+  return `${id}|${c.absStart.toFixed(6)}|${c.trimStart}|${c.trimEnd}|${c.playbackRate}|${c.loop}|${c.role}`;
 }
 
 /** Builds the schedule by sampling the composition's audio nodes once per frame. */
@@ -155,12 +155,28 @@ export class AudioMixer {
   readonly sampleRate: number;
   readonly numberOfChannels: number;
   #clips: ScheduledClip[];
+  #dialogue: ScheduledClip[];
   #readers = new Map<ScheduledClip, ClipReader | null>();
 
-  constructor(clips: ScheduledClip[], sampleRate = 48000, numberOfChannels = 2) {
-    this.#clips = clips;
+  /** `roles` keeps only clips with those roles (clips without a role count as effects); ducking still follows all dialogue. */
+  constructor(clips: ScheduledClip[], sampleRate = 48000, numberOfChannels = 2, roles?: readonly AudioRole[]) {
+    this.#clips = roles ? clips.filter((c) => roles.includes(c.role ?? 'effects')) : clips;
+    this.#dialogue = clips.filter((c) => c.role === 'dialogue');
     this.sampleRate = sampleRate;
     this.numberOfChannels = numberOfChannels;
+  }
+
+  /** How far ducking is engaged at `t`, 0..1: it ramps down ahead of dialogue and back up after it. */
+  #ducking(t: number): number {
+    const ATTACK = 0.15,
+      RELEASE = 0.5;
+    let k = 0;
+    for (const d of this.#dialogue) {
+      if (t >= d.activeStart && t < d.activeEnd) return 1;
+      if (t < d.activeStart && t > d.activeStart - ATTACK) k = Math.max(k, 1 - (d.activeStart - t) / ATTACK);
+      if (t >= d.activeEnd && t < d.activeEnd + RELEASE) k = Math.max(k, 1 - (t - d.activeEnd) / RELEASE);
+    }
+    return k * k * (3 - 2 * k);
   }
 
   get hasClips(): boolean {
@@ -201,8 +217,9 @@ export class AudioMixer {
         let src = c.trimStart + local * c.playbackRate;
         if (c.loop && loopLen > 0) src = c.trimStart + ((((src - c.trimStart) % loopLen) + loopLen) % loopLen);
         else if (src >= srcEnd) continue;
-        const v0 = typeof c.volume === 'function' ? c.volume(local) : c.volume;
-        const v1 = typeof c.volume === 'function' ? c.volume(local + n / sr) : c.volume;
+        const duck = (t: number) => (c.duck > 0 ? 10 ** ((-c.duck * this.#ducking(t)) / 20) : 1);
+        const v0 = (typeof c.volume === 'function' ? c.volume(local) : c.volume) * duck(tb);
+        const v1 = (typeof c.volume === 'function' ? c.volume(local + n / sr) : c.volume) * duck(tb + n / sr);
         const tmp = new Float32Array(n * 2);
         await reader.read(src, c.playbackRate / sr, n, tmp, (i) => {
           const tAbs = tb + i / sr;
