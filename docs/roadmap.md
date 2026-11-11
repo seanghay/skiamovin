@@ -83,7 +83,11 @@ source and are checked against reference values.
 **Done when:** a 10-second app demo (a scrolled list with momentum and rubber banding, a flicked card that
 snaps into place, a sheet that opens with a spring) renders identically in every worker and in both builds.
 
-## Phase 3: Looks
+## Phase 3: Looks (done)
+
+Implemented: utility classes, transitions, effect layers, backgrounds, glass, adjustment layers, mattes,
+clipping masks, layer styles, text warps and color grading. Not yet: grading by color range or shape
+(secondary correction), and our own named filter presets.
 
 | Idea | From | What we add |
 |---|---|---|

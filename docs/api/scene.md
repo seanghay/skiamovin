@@ -372,6 +372,27 @@ Plays items one after another.
 
 ---
 
+## Utility classes
+
+Every node builder takes a `class` string of Tailwind-style utilities, using Tailwind CSS's default theme
+(colors, spacing, type scale, radii, shadows and blurs, generated from Tailwind 4.3.5). Keys set directly in the
+style win over classes. Unknown classes throw an error that names them.
+
+```ts
+box({ class: 'flex flex-col gap-6 p-10 rounded-3xl bg-slate-900/80 border border-slate-700 shadow-2xl' }, [
+  text('Revenue grew 42%', { class: 'text-4xl font-bold tracking-tight text-white' }),
+])
+```
+
+Supported: `flex`/`grid`/`block`/`hidden`, `absolute`/`relative`, flex direction, wrap, grow and shrink,
+`items-*`, `justify-*`, `content-*`, `self-*`, `gap-*`, `basis-*`, `grid-cols-*`, `col-span-*`, `w-*`, `h-*`,
+`size-*`, `min-*`/`max-*`, `aspect-*`, `p*-*`, `m*-*` (with negatives), `inset-*` and sides, `z-*`, `opacity-*`,
+`text-{size}` (with its line height), `text-{color}`, `text-{align}`, `font-{weight}`, `tracking-*`,
+`leading-*`, `italic`, `underline`, `line-through`, `bg-{color}` (with `/opacity`), `bg-linear-to-*` with
+`from-*`/`via-*`/`to-*`, `rounded*`, `border*`, `shadow-*`, `blur-*`, `backdrop-blur-*`, `mix-blend-*`,
+`scale-*`, `rotate-*`, `translate-*`, `origin-*` and arbitrary values such as `w-[123px]` or `bg-[#ff8800]`.
+Text classes apply to text nodes. `tw(classes)` returns the style object, and `tailwindTheme` the tokens.
+
 ## Visual style
 
 | Property | Type | Notes |

@@ -17,6 +17,7 @@
       "!examples/assets",
       "!target",
       "!crates/skiamovin-wasm/library.js",
+      "!packages/skiamovin/src/scene/tailwind-theme.ts",
       "!**/*.md"
     ]
   },

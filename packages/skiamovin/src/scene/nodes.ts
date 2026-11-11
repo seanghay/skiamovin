@@ -15,6 +15,7 @@ import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 import type { Grade } from './grading.ts';
+import { tw } from './tw.ts';
 
 // Render context
 
@@ -121,7 +122,11 @@ export interface VisualStyle {
   cache?: string;
 }
 
-export type NodeStyle = Style & VisualStyle;
+export type NodeStyle = Style &
+  VisualStyle & {
+    /** Tailwind-style utility classes, such as `'flex items-center gap-4 p-8 rounded-2xl bg-slate-900'`. */
+    class?: string;
+  };
 
 export type Fit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
 
@@ -242,6 +247,13 @@ export interface AudioClip {
 
 // Builders
 
+/** Expands a `class` string into style; keys set directly in the style win over classes. */
+function withClass<T extends NodeStyle>(style: T): T {
+  if (!style.class) return style;
+  const { class: classes, ...rest } = style;
+  return { ...(tw(classes) as T), ...rest } as T;
+}
+
 function flatten(children: readonly Child[] | undefined, out: SceneNode[] = []): SceneNode[] {
   if (!children) return out;
   for (const c of children) {
@@ -253,6 +265,7 @@ function flatten(children: readonly Child[] | undefined, out: SceneNode[] = []):
 }
 
 export function box(style: NodeStyle = {}, children?: readonly Child[]): SceneNode {
+  style = withClass(style);
   return { type: 'box', style, children: flatten(children) };
 }
 
@@ -285,6 +298,7 @@ const TEXT_KEYS = new Set([
 ]);
 
 export function text(content: string | readonly (string | Span)[], style: NodeStyle & TextProps = {}): SceneNode {
+  style = withClass(style);
   const t: TextProps = {};
   const s: NodeStyle = {};
   for (const [k, v] of Object.entries(style)) (TEXT_KEYS.has(k) ? (t as any) : (s as any))[k] = v;
@@ -305,6 +319,7 @@ export function image(
     sampling?: 'linear' | 'nearest' | 'mipmap' | 'cubic';
   } = {},
 ): SceneNode {
+  style = withClass(style);
   const { fit = 'fill', objectPosition, sampling, ...rest } = style;
   return {
     type: 'image',
@@ -328,6 +343,7 @@ export interface VideoProps {
 }
 
 export function video(media: Input | InputVideoTrack, style: NodeStyle & VideoProps = {}): SceneNode {
+  style = withClass(style);
   const { fit = 'fill', trim, playbackRate = 1, loop = false, volume = 1, muted = false, ...rest } = style;
   const scope = currentScope();
   const start = trim?.start ?? 0;
@@ -377,6 +393,7 @@ export function lottie(
   asset: LottieAsset,
   style: NodeStyle & { fit?: Fit; time?: number; progress?: number; loop?: boolean; overrides?: unknown } = {},
 ): SceneNode {
+  style = withClass(style);
   const { fit = 'contain', time, progress, loop, overrides, ...rest } = style;
   const scope = currentScope();
   let t = time ?? scope.ctx.timestamp;
@@ -388,6 +405,7 @@ export function svg(
   asset: SvgAsset,
   style: NodeStyle & { fit?: Fit; attributes?: Record<string, Record<string, string>> } = {},
 ): SceneNode {
+  style = withClass(style);
   const { fit = 'contain', attributes, ...rest } = style;
   return { type: 'svg', asset, fit, attributes, style: rest, children: [] };
 }
@@ -399,6 +417,7 @@ export function shader(
     children?: Record<string, Shader | ImageAsset | SceneNode>;
   } = {},
 ): SceneNode {
+  style = withClass(style);
   const { uniforms = {}, children = {}, ...rest } = style;
   const scope = currentScope();
   const ctx = scope.ctx;
@@ -421,6 +440,7 @@ export function draw(
   fn: (canvas: Canvas, size: { width: number; height: number }, ctx: RenderContext) => void,
   style: NodeStyle = {},
 ): SceneNode {
+  style = withClass(style);
   return { type: 'draw', fn, ctx: currentScope().ctx, style, children: [] };
 }
 
@@ -464,6 +484,7 @@ export function pathFromSVG(d: string): Path {
  * defaults to the right and bottom edges of the path.
  */
 export function path(d: string | Path, style: NodeStyle & PathStyle = {}): SceneNode {
+  style = withClass(style);
   const p = typeof d === 'string' ? pathFromSVG(d) : d;
   const { fill, stroke, strokeWidth, strokeCap, strokeJoin, trim, arrow, ...rest } = style;
   if (!rest.size) {

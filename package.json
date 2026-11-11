@@ -10,10 +10,12 @@
     "build": "npm run build:native && npm run build:wasm && npm run build:ts",
     "test": "cargo test -p skiamovin-codecs && npm test -w skiamovin",
     "lint": "biome check . && cargo fmt --all -- --check && cargo clippy --workspace --exclude skiamovin-wasm -- -D warnings",
-    "format": "biome check --write . && cargo fmt --all"
+    "format": "biome check --write . && cargo fmt --all",
+    "gen:tailwind": "node scripts/gen-tailwind-theme.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6"
+    "@biomejs/biome": "2.6.6",
+    "tailwindcss": "4.3.5"
   },
   "workspaces": [
     "packages/skiamovin"

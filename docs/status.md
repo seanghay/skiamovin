@@ -20,6 +20,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Transitions | `transition()` and `series` transitions from gl-transitions (all 214 compile and render), `listTransitions()` with parameters and licenses |
 | Effects and glass | `effects` (`grain`, `glow`, `vignette`, `chromaticAberration`, `halftone`, `pixelate`, `sharpen`), `glass` on any node, `backgrounds` presets (`mesh`, `aurora`, `noise`, `dots`, `grid`) |
 | Compositing | Alpha and luminance mattes (with inverted modes), `clipTo` clipping masks, `adjustmentLayer`, `isolate`, Photoshop-style `layerStyle`, text `warp` and `Path.warp` |
+| Utility classes | A `class` prop on every node with Tailwind-style utilities and Tailwind's default theme; `tw()`, `tailwindTheme` |
 | Color grading | `grade` on any node: `lut` (`.cube`, LUT images, Hald; tetrahedral, checked against ffmpeg), `adjust`, `curves`, `levels`, `gradeWheels`, `cdl`, `gradientMap`, `channelMixer`, `posterize`, `threshold`, `blendGrades`, each with `strength` |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
