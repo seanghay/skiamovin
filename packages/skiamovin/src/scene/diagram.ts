@@ -101,7 +101,7 @@ export function diagram(source: string, options: DiagramOptions & NodeStyle = {}
   const deferred: Deferred<DiagramLayout> = {
     key: `diagram:${JSON.stringify([source, t, fontSize, fontFamily, monoFamily])}`,
     load: () => loadDiagram(source),
-    layout: (measure) => layoutDiagram(spec, measure),
+    layout: (tools) => layoutDiagram(spec, tools.measure),
     build: (layout) => ({ width: layout.width, height: layout.height, children: diagramNodes(layout, spec) }),
     free: freeDiagram,
   };

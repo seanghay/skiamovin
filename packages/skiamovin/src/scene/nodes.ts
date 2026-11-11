@@ -11,6 +11,7 @@ import {
   type RuntimeEffect,
   type Shader,
 } from '../core/skia.ts';
+import type { textlayout } from '../core/text.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
@@ -201,6 +202,13 @@ export interface Span {
 /** Measures text the way the renderer draws it. @internal */
 export type MeasureText = (content: (string | Span)[], props: TextProps) => { width: number; baseline: number };
 
+/** What the renderer offers deferred content while laying it out. @internal */
+export interface LayoutTools {
+  measure: MeasureText;
+  /** The renderer's paragraph for this text, laid out at `width` (unbounded by default). Don't delete it. */
+  paragraph(content: (string | Span)[], props: TextProps, width?: number): InstanceType<typeof textlayout.Paragraph>;
+}
+
 /**
  * Content the renderer lays out once and reuses, after loading what it needs (diagrams, code). The box's children
  * are filled in before layout. @internal
@@ -210,7 +218,7 @@ export interface Deferred<L = any> {
   key: string;
   load(): Promise<void>;
   /** Null until `load` has finished. */
-  layout(measure: MeasureText): L | null;
+  layout(tools: LayoutTools): L | null;
   /** The box's size and children for this frame. */
   build(layout: L): { width: number; height: number; children: SceneNode[] };
   free?(layout: L): void;

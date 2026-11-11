@@ -43,7 +43,7 @@ import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
   type AudioClip,
   type Gradient,
-  type MeasureText,
+  type LayoutTools,
   popScope,
   pushScope,
   type RenderContext,
@@ -471,17 +471,24 @@ export class FrameRenderer {
 
   /** Fills deferred boxes (diagrams, code) with their children, laying each one out once. */
   #expandDeferred(nodes: SceneNode[]): void {
-    const measure: MeasureText = (content, props) => {
+    const paragraph = (content: (string | Span)[], props: TextProps, width = 1e6) => {
       const p = this.#paragraphFor({ type: 'text', content, text: props, style: {}, children: [] });
-      p.layout(1e6);
-      return { width: p.maxIntrinsicWidth(), baseline: p.alphabeticBaseline() };
+      p.layout(width);
+      return p;
+    };
+    const tools: LayoutTools = {
+      measure: (content, props) => {
+        const p = paragraph(content, props);
+        return { width: p.maxIntrinsicWidth(), baseline: p.alphabeticBaseline() };
+      },
+      paragraph,
     };
     const visit = (n: SceneNode) => {
       const d = n.type === 'box' ? n.deferred : undefined;
       if (d && n.children.length === 0) {
         let entry = this.#deferred.get(d.key);
         if (!entry) {
-          const layout = d.layout(measure);
+          const layout = d.layout(tools);
           // Not loaded yet: `#prepare` loads it and expands again.
           if (layout === null) return;
           if (this.#deferred.size >= 64) {

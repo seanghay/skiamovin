@@ -804,6 +804,45 @@ fn build_outlines(p: &mut ParagraphObj) -> Option<Vec<OutlineRun>> {
     ok.then_some(runs)
 }
 
+/// Outlines of the laid-out text, one path per unit, in the paragraph's coordinates. `unit_starts` are ascending
+/// UTF-16 offsets where each unit begins. Glyphs come from the same outlines used for drawing, so the paths match
+/// the drawn text on every platform. Overlapping contours are merged.
+pub fn paragraph_unit_paths(h: u32, unit_starts: &[u32]) -> R<Vec<u32>> {
+    let p = get::<ParagraphObj>(h)?;
+    let mut p = p.borrow_mut();
+    let map8to16 = p.utf8_to_utf16.clone();
+    let n = unit_starts.len().max(1);
+    let unit_of = |u16: u32| unit_starts.partition_point(|s| *s <= u16).saturating_sub(1).min(n - 1);
+    let mut builders: Vec<skia_safe::PathBuilder> = (0..n).map(|_| skia_safe::PathBuilder::new()).collect();
+    p.paragraph.visit(|_, info| {
+        let Some(info) = info else { return };
+        let origin = info.origin();
+        let mut font = info.font().clone();
+        if let Some(tf) = outline_typeface(info.font(), info.glyphs()) {
+            font.set_typeface(tf);
+        }
+        font.set_hinting(skia_safe::FontHinting::None);
+        let starts8 = info.utf8_starts();
+        for (gi, (g, pos)) in info.glyphs().iter().zip(info.positions()).enumerate() {
+            let byte = starts8.get(gi).copied().unwrap_or(0) as usize;
+            let unit = unit_of(map8to16[byte.min(map8to16.len() - 1)] as u32);
+            if let Some(path) = font.get_path(*g) {
+                let at = *pos + origin;
+                builders[unit].add_path_with_transform(&path, &skia_safe::Matrix::translate(at), None);
+            }
+        }
+    });
+    Ok(builders
+        .into_iter()
+        .map(|mut b| {
+            let path = b.detach();
+            // Variable fonts often overlap their contours; merge them so strokes don't show the seams.
+            let path = path.simplify().unwrap_or(path);
+            put(crate::api::path::PathObj { builder: skia_safe::PathBuilder::new_path(&path) })
+        })
+        .collect())
+}
+
 /// `[height, maxWidth, minIntrinsicWidth, maxIntrinsicWidth, longestLine, alphabeticBaseline, ideographicBaseline, didExceedMaxLines, lineNumber]`.
 pub fn paragraph_metrics(h: u32) -> R<Vec<f32>> {
     par(h, |p| {

@@ -632,6 +632,13 @@ class Paragraph extends SkObject {
   unresolvedGlyphs(): number {
     return N().paragraph_unresolved_glyphs(this.handle);
   }
+  /**
+   * Outlines of the laid-out text, one path per unit. `unitStarts` are ascending UTF-16 offsets where each unit
+   * begins. The paths are in the paragraph's coordinates and you own them.
+   */
+  unitPaths(unitStarts: readonly number[]): Path[] {
+    return Array.from(N().paragraph_unit_paths(this.handle, Uint32Array.from(unitStarts)), (h) => Path._wrap(h));
+  }
   /** Outlines of line `lineNumber`. */
   getPath(lineNumber: number): Path {
     return Path._wrap(N().paragraph_get_path(this.handle, lineNumber));

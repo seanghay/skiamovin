@@ -89,6 +89,7 @@ const paragraph = builder.build();
 | `getFonts(): { textRange, font }[]` |  |
 | `visit((lineNumber, info: VisitorInfo \| null) => void)` | Every glyph run, for per-glyph animation. `info` is `{ font, glyphs: number[], positions: [x, y][], utf16Starts: number[], flags }`, with positions relative to the paragraph origin. `null` marks the end of a line |
 | `getPath(lineNumber: number): Path` | Text outlines as a `Path` |
+| `unitPaths(unitStarts: number[]): Path[]` | Outlines of the laid-out text, one path per unit starting at each UTF-16 offset. Made from the same outlines used for drawing, with overlapping contours merged |
 
 ## Indices
 

@@ -1,7 +1,7 @@
 // Code blocks: highlighted by Shiki (VS Code grammars and themes) and animated between versions of the code, token
 // by token, as in Motion Canvas.
 import { Easing } from './animation.ts';
-import { box, type Deferred, type MeasureText, type NodeStyle, type SceneNode, span, text } from './nodes.ts';
+import { box, type Deferred, type NodeStyle, type SceneNode, span, text } from './nodes.ts';
 
 export interface CodeOptions {
   /** A language Shiki knows, such as `'ts'`, `'rust'` or `'python'`. Default `'ts'`. */
@@ -177,7 +177,7 @@ export function code(source: string, options: CodeOptions & NodeStyle = {}): Sce
   const deferred: Deferred<CodeLayout> = {
     key: `code:${JSON.stringify([source, animating ? from : null, language, theme, fontSize, fontFamily, lineHeight, tabSize])}`,
     load: () => loadCode(language, theme),
-    layout: (measure: MeasureText) => {
+    layout: ({ measure }) => {
       if (!ready || !loaded.has(`${language}\u0000${theme}`)) return null;
       const to = tokenize(source, language, theme, tabSize);
       const prev = animating ? tokenize(from, language, theme, tabSize).version : null;
