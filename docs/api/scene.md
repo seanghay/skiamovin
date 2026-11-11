@@ -502,11 +502,29 @@ function analyzeAudio(
 interface AudioAnalysis {
   getRms(timestamp: number): number;
   getBands(timestamp: number): Float32Array; // `bands` values, 0–1, log-spaced
+  onsets: { time: number; strength: number }[]; // sudden changes, such as drum hits
+  tempo: number; // beats per minute, 0 when there's no steady beat
+  beats: number[]; // beat times in seconds
 }
 ```
 
-Precomputes loudness and spectrum so audio-reactive visuals can stay pure. Call it at module scope with
-top-level `await`.
+Precomputes loudness, spectrum, onsets and beats so audio-reactive visuals can stay pure. Call it at module scope
+with top-level `await`. Onsets come from spectral flux; the tempo from the autocorrelation of onset strength, with a
+gentle preference for 120 BPM to settle half and double tempo; beats are placed where onsets line up best. It
+assumes a steady tempo.
+
+| Function | What it does |
+|---|---|
+| `pulse(times, t, decay?)` | Jumps to 1 at each time in `times` (beats, onset times, note starts) and fades over `decay` seconds (default 0.2). Use it for scale or glow on the beat |
+| `beatAt(beats, t)` | `{ index, progress }`: which beat `t` is in and how far through it |
+| `detectRhythm(samples, sampleRate)` | The same onset, tempo and beat detection for mono samples you already have |
+| `parseMidi(bytes)` | Reads a Standard MIDI File into `notes` (`time` and `duration` in seconds, `pitch`, `velocity` 0–1, `channel`, `track`), `tempos`, `trackNames` and `duration`, following tempo changes |
+
+```ts
+const song = parseMidi(await readFile('song.mid'));
+const kicks = song.notes.filter((n) => n.pitch === 36).map((n) => n.time);
+// in render: scale by 1 + 0.2 * pulse(kicks, timestamp)
+```
 
 ---
 
@@ -840,6 +858,24 @@ The world is simulated once with Rapier in the Rust core and cached by its descr
 from `render` every frame is cheap, and frames look positions up by time (`body`, `all`). `world.contacts` and
 `contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
 a test checks the Node and WebAssembly builds give exactly the same positions.
+
+### Type as shapes and variable fonts
+
+```ts
+textPaths('Hello', {
+  fontSize: 160,
+  each: (g) => path(g.path, { stroke: '#fff', fill: null, trim: { end: t * 2 - g.index * 0.1 } }),
+});
+variableText('Breathe', (u) => ({ wght: 550 + 350 * Math.sin(t * 3 - u.index * 0.5) }), { fontSize: 120 });
+fitText('HEADLINE', { width: 1600, range: [30, 150], fontSize: 200 });
+```
+
+| Function | What it does |
+|---|---|
+| `textPaths(text, { by?, width?, each?, ...textProps })` | Text as vector shapes, one per character (`'chars'`, the default), word, line or `'all'`. `each(glyph)` turns a piece into nodes; it gets `path`, `text`, `index`, `count`, `center` and `color`. Pieces are shaped and placed exactly like a text node, so you can outline, draw on, distort, fill with a shader or morph them |
+| `variableText(text, axes, options)` | Text whose variable font axes change per character (or word with `by: 'words'`). Each character is shaped with its own values, so wider or bolder letters push the others along |
+| `fitText(text, { width, axis?, range, ...textProps })` | Sets a variable font axis (`wdth` by default) so the text fills `width` exactly, staying within `range` |
+| `fontAxes(fontAsset)` | The font's axes with their `min`, `def` and `max`, once it has loaded (composition fonts load before the first frame) |
 
 ### `captions`
 

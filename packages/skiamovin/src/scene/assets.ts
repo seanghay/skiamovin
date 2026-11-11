@@ -7,6 +7,7 @@ import { svg } from '../core/svg.ts';
 import { FontMgr, type Typeface } from '../core/text.ts';
 import { importNode } from '../native/node-import.ts';
 import { type ParsedLut, parseCube } from './grading.ts';
+import { detectRhythm, type Rhythm } from './rhythm.ts';
 
 export type AssetSource = Source | Uint8Array | ArrayBuffer | string | URL;
 
@@ -197,12 +198,15 @@ export class LottieAsset extends Asset<never> {
 
 // Audio analysis
 
-export interface AudioAnalysis {
+export interface AudioAnalysis extends Rhythm {
   getRms(timestamp: number): number;
   getBands(timestamp: number): Float32Array;
 }
 
-/** Precomputes loudness and frequency bands for each frame, so visuals can react to audio. */
+/**
+ * Precomputes loudness and frequency bands for each frame, plus onsets, tempo and beats, so visuals can react to
+ * audio.
+ */
 export async function analyzeAudio(
   media: Input | InputAudioTrack,
   options: { frameRate: number; bands?: number; minFrequency?: number; maxFrequency?: number },
@@ -218,7 +222,8 @@ export async function analyzeAudio(
   const sr = await track.getSampleRate();
   const hop = sr / fps;
   const win = 2048;
-  let mono = new Float32Array(0);
+  const chunks: Float32Array[] = [];
+  let total = 0;
   for await (const s of new AudioSampleSink(track).samples()) {
     const ch = s.numberOfChannels;
     const buf = new Float32Array(s.numberOfFrames);
@@ -227,11 +232,15 @@ export async function analyzeAudio(
       s.copyTo(tmp, { planeIndex: c, format: 'f32-planar' });
       for (let i = 0; i < tmp.length; i++) buf[i]! += tmp[i]! / ch;
     }
-    const merged = new Float32Array(mono.length + buf.length);
-    merged.set(mono);
-    merged.set(buf, mono.length);
-    mono = merged;
+    chunks.push(buf);
+    total += buf.length;
     s.close();
+  }
+  const mono = new Float32Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    mono.set(c, at);
+    at += c.length;
   }
   const frames = Math.ceil(mono.length / hop);
   for (let f = 0; f < frames; f++) {
@@ -262,6 +271,7 @@ export async function analyzeAudio(
   }
   const idx = (t: number) => Math.max(0, Math.min(frames - 1, Math.round(t * fps)));
   return {
+    ...detectRhythm(mono, sr),
     getRms: (t) => rms[idx(t)] ?? 0,
     getBands: (t) => bands[idx(t)] ?? new Float32Array(nb),
   };

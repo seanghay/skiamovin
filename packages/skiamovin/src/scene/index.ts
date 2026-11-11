@@ -39,6 +39,8 @@ export type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 export { chromaticAberration, glow, grain, halftone, pixelate, sharpen, vignette } from './effects.ts';
 export type { Axes, AxesOptions, CameraState } from './explain.ts';
 export { axes, camera, create, fadeIn, fitCamera, indicate, numberLine } from './explain.ts';
+export type { GlyphShape, TextPathsOptions } from './glyphs.ts';
+export { fitText, fontAxes, textPaths, variableText } from './glyphs.ts';
 export type { AdjustOptions, CurvesOptions, Grade, LevelsOptions, ParsedLut } from './grading.ts';
 export {
   adjust,
@@ -130,6 +132,8 @@ export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
+export type { Midi, MidiNote, Onset, Rhythm } from './rhythm.ts';
+export { beatAt, detectRhythm, parseMidi, pulse } from './rhythm.ts';
 export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from './simulation.ts';
 export { PhysicsWorld, physics } from './simulation.ts';
 export type { StatesOptions } from './states.ts';
