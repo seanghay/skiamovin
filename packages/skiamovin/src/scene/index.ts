@@ -120,6 +120,8 @@ export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
+export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from './simulation.ts';
+export { PhysicsWorld, physics } from './simulation.ts';
 export type { StatesOptions } from './states.ts';
 export { states } from './states.ts';
 export { tailwindTheme } from './tailwind-theme.ts';

@@ -9,7 +9,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 |---|---|
 | Core Skia bindings (`skiamovin`) | About 330 functions generated from one Rust definition: surfaces, canvas, paint, paths and path ops, contour measure, images and codecs (incl. animated GIF/WebP frames), gradients and noise, SkSL runtime effects (shaders, color filters, blenders), image/color/mask filters, path effects, blenders, fonts, text blobs, SkParagraph, SVG, pictures, PDF |
 | Node build | Native addon, built and tested in CI for macOS arm64, Linux x64 and arm64, and Windows x64. On Linux and Windows it draws on the CPU |
-| Web build | WebAssembly (emscripten), single-threaded, about 9.8 MB of WASM |
+| Web build | WebAssembly (emscripten), single-threaded, about 11 MB of WASM (Rapier adds 1.3 MB) |
 | GPU | **Metal** on Node (macOS), **WebGL2** in the browser, CPU raster everywhere |
 | Native codecs on Node | VideoToolbox H.264/HEVC encode and decode (hardware), HEVC with alpha; AudioToolbox AAC encode, AAC and MP3 decode. All registered with Mediabunny's custom coder API |
 | `skiamovin/media` | `registerNativeCodecs`, `SurfaceSource`, `ImageSink`, `videoSampleFromSurface`, `videoSampleFromImage`, `imageFromVideoSample` |
@@ -23,6 +23,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Utility classes | A `class` prop on every node with Tailwind-style utilities and Tailwind's default theme; `tw()`, `tailwindTheme` |
 | Color grading | `grade` on any node: `lut` (`.cube`, LUT images, Hald; tetrahedral, checked against ffmpeg), `adjust`, `curves`, `levels`, `gradeWheels`, `cdl`, `gradientMap`, `channelMixer`, `posterize`, `threshold`, `blendGrades`, each with `strength` |
 | Layout motion | `layoutId` layout animation and shared elements (pure in time), `states()`, sequence `exit` and `time`, video `speed` ramps, `Composition.withSize()` |
+| 2D physics | `physics()` with Rapier in the Rust core: bodies, joints, contacts, simulated once and looked up by time; identical on Node and WebAssembly |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

@@ -1727,6 +1727,38 @@ pub extern "C" fn skm_path_warp(h: u32, mode: u32, bend: f32, l: f32, t: f32, r:
 }
 
 #[no_mangle]
+pub extern "C" fn skm_physics_simulate(def_ptr: *const u8, def_len: usize) -> u32 {
+    match api::physics::physics_simulate(unsafe { crate::rt::str_from(def_ptr, def_len) }) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_physics_info(h: u32) -> *const u8 {
+    match api::physics::physics_info(h) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_physics_frames(h: u32) -> *const u8 {
+    match api::physics::physics_frames(h) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_physics_contacts(h: u32) -> *const u8 {
+    match api::physics::physics_contacts(h) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()
 }

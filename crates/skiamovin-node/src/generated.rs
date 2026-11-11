@@ -1108,6 +1108,26 @@ pub fn path_warp(h: u32, mode: u32, bend: f64, l: f64, t: f64, r: f64, b: f64, s
     api::path_motion::path_warp(h, mode, bend as f32, l as f32, t as f32, r as f32, b as f32, step as f32).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "physics_simulate")]
+pub fn physics_simulate(def: String) -> napi::Result<u32> {
+    api::physics::physics_simulate(&def).map(|v| v).map_err(err)
+}
+
+#[napi(js_name = "physics_info")]
+pub fn physics_info(h: u32) -> napi::Result<Float32Array> {
+    api::physics::physics_info(h).map(|v| Float32Array::new(v)).map_err(err)
+}
+
+#[napi(js_name = "physics_frames")]
+pub fn physics_frames(h: u32) -> napi::Result<Float32Array> {
+    api::physics::physics_frames(h).map(|v| Float32Array::new(v)).map_err(err)
+}
+
+#[napi(js_name = "physics_contacts")]
+pub fn physics_contacts(h: u32) -> napi::Result<Uint32Array> {
+    api::physics::physics_contacts(h).map(|v| Uint32Array::new(v)).map_err(err)
+}
+
 #[napi(js_name = "picture_recorder_new")]
 pub fn picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()

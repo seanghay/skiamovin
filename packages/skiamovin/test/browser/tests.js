@@ -383,5 +383,11 @@ window.golden = async () => {
     for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
     return btoa(s);
   };
-  return { frames: frames.map((f) => ({ name: f.name, pixels: b64(f.pixels) })), layout: goldenLayout() };
+  const { goldenPhysics } = await import('../shared/golden.js');
+  const { physics } = await import('skiamovin/scene');
+  return {
+    frames: frames.map((f) => ({ name: f.name, pixels: b64(f.pixels) })),
+    layout: goldenLayout(),
+    physics: goldenPhysics(physics),
+  };
 };

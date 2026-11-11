@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { FilePathSource } from 'mediabunny';
 import { init } from 'skiamovin';
-import { FontAsset } from 'skiamovin/scene';
+import { FontAsset, physics } from 'skiamovin/scene';
 import { openTestPage, type TestPage } from './browser/session.ts';
-import { goldenLayout, renderGolden } from './shared/golden.js';
+import { goldenLayout, goldenPhysics, renderGolden } from './shared/golden.js';
 
 let session: TestPage;
 before(async () => {
@@ -37,6 +37,7 @@ test('golden: CPU frames match between the Node addon and WebAssembly', async ()
   const web = (await session.page.evaluate(() => (window as any).golden())) as {
     frames: { name: string; pixels: string }[];
     layout: number[][];
+    physics: number[];
   };
   assert.equal(web.frames.length, native.length);
   for (let i = 0; i < native.length; i++) {
@@ -50,4 +51,5 @@ test('golden: CPU frames match between the Node addon and WebAssembly', async ()
     assert.ok(r.max <= limit, `${n.name}: largest difference ${r.max} exceeds ${limit}`);
   }
   assert.deepEqual(web.layout, goldenLayout(), 'Taffy layout is identical');
+  assert.deepEqual(web.physics, goldenPhysics(physics), 'physics is identical');
 });

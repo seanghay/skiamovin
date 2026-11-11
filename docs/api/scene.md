@@ -802,6 +802,28 @@ Easing.spring(params): EasingFunction
 
 Collisions between bodies come with the physics engine (see the [roadmap](../roadmap.md)).
 
+### 2D physics: `physics`
+
+```ts
+const world = physics({
+  bodies: [
+    { type: 'fixed', shape: { kind: 'box', width: 1920, height: 40 }, x: 960, y: 1060 },
+    { id: 'ball', shape: { kind: 'circle', radius: 40 }, x: 960, y: 0, restitution: 0.7 },
+  ],
+  duration: 6,
+});
+const { x, y, angle } = world.body('ball', ctx.timestamp);
+```
+
+Rigid bodies (`circle`, `box` with optional rounded corners, `capsule`, convex `polygon`, `segment`), joints
+(`revolute`, `fixed`, `prismatic`, `rope`, `spring`), gravity, bounciness, friction, density, damping, sensors and
+continuous collision detection. Lengths are pixels and angles degrees.
+
+The world is simulated once with Rapier in the Rust core and cached by its description, so calling `physics()`
+from `render` every frame is cheap, and frames look positions up by time (`body`, `all`). `world.contacts` and
+`contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
+a test checks the Node and WebAssembly builds give exactly the same positions.
+
 ### `random` and `noise`
 
 ```ts

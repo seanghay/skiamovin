@@ -174,3 +174,20 @@ export function goldenLayout() {
     return [l.location.x, l.location.y, l.size.width, l.size.height];
   });
 }
+
+/** A small pile of bodies, simulated for 2 s. Returns positions every 0.25 s, which must match exactly. */
+export function goldenPhysics(physics) {
+  const bodies = [{ type: 'fixed', shape: { kind: 'box', width: 400, height: 20 }, x: 200, y: 300 }];
+  for (let i = 0; i < 12; i++)
+    bodies.push({
+      shape: i % 2 ? { kind: 'circle', radius: 9 + (i % 3) } : { kind: 'box', width: 18, height: 14, radius: 2 },
+      x: 150 + (i % 4) * 25,
+      y: 40 - i * 22,
+      angle: i * 13,
+      restitution: 0.4,
+    });
+  const world = physics({ bodies, duration: 2 });
+  const out = [];
+  for (let t = 0; t <= 2; t += 0.25) for (const b of world.all(t)) out.push(b.x, b.y, b.angle);
+  return out;
+}
