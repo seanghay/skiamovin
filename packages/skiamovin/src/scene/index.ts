@@ -51,12 +51,14 @@ export type {
   PathStyle,
   RenderContext,
   SceneNode,
+  SeriesItem,
   Shadow,
   Span,
   SplitText,
   TextProps,
   TextUnit,
   Transform,
+  TransitionOptions,
   UnitStyle,
   VideoProps,
   VisualStyle,
@@ -76,6 +78,7 @@ export {
   span,
   svg,
   text,
+  transition,
   video,
 } from './nodes.ts';
 export { alongPath, morphPath } from './paths.ts';
@@ -114,5 +117,7 @@ export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './ren
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
 export type { RangeShape, TextAnimatorOptions } from './text-effects.ts';
 export { counter, graphemeCount, scramble, textAnimator } from './text-effects.ts';
+export type { TransitionInfo } from './transitions.ts';
+export { listTransitions } from './transitions.ts';
 export type { WorkerFactory } from './worker.ts';
 export { CompositionWorker, serveComposition } from './worker.ts';

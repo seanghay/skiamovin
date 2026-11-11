@@ -324,6 +324,26 @@ draw(fn: (canvas: Canvas, size: { width: number; height: number }, ctx: RenderCo
 
 Direct access to the Skia canvas, translated and clipped to the node's box. `fn` must be pure.
 
+### `transition`
+
+```ts
+transition(name: string, progress: number, from: Child, to: Child, options?: { params?, textures? } & NodeStyle): SceneNode
+listTransitions(): Promise<TransitionInfo[]>   // name, description, author, license, tags, textures, params
+```
+
+Blends between two scenes with a shader from [gl-transitions](https://gl-transitions.com) (all 214, tested to
+compile and render). `progress` 0 shows `from` and 1 shows `to`. Names are PascalCase, such as `'CrossZoom'`;
+`listTransitions()` lists them with their parameters. Two transitions (`LumaWipe`, `DisplacementMap`) also need
+an image passed in `textures`. Most transitions are MIT-licensed; each one's license and author are in its info.
+In a `series`, set `transition` on an item to blend into the next one, centered on the cut:
+
+```ts
+series(ctx, [
+  { duration: 3, render: intro, transition: { name: 'Dreamy', duration: 0.8 } },
+  { duration: 4, render: features },
+])
+```
+
 ### `sequence`
 
 ```ts

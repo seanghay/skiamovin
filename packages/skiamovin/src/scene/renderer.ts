@@ -50,6 +50,7 @@ import {
   type Transform,
 } from './nodes.ts';
 import { segmentUnits } from './text-effects.ts';
+import { loadTransitions, transitionProgram } from './transitions.ts';
 
 const LAYOUT_KEYS = new Set([
   'display',
@@ -434,6 +435,7 @@ export class FrameRenderer {
             ))(),
         );
       }
+      if (n.type === 'shader' && n.transition) loads.push(loadTransitions());
       if (n.type === 'shader')
         for (const c of Object.values(n.shaderChildren)) {
           if (c instanceof ImageAsset && !c._loaded()) loads.push(c._get());
@@ -884,7 +886,12 @@ export class FrameRenderer {
         break;
       }
       case 'shader': {
-        const effect = typeof n.effect === 'string' ? this.#effect(n.effect) : n.effect;
+        const program = n.transition ? transitionProgram(n.transition) : null;
+        const effect = program
+          ? this.#effect(program.sksl)
+          : typeof n.effect === 'string'
+            ? this.#effect(n.effect)
+            : n.effect;
         const kids: Record<string, Shader | null> = {};
         const temps: Shader[] = [];
         for (const [name, c] of Object.entries(n.shaderChildren)) {
@@ -910,7 +917,15 @@ export class FrameRenderer {
             }
           }
         }
-        const sh = effect.makeShader({ iResolution: [w, h], ...n.uniforms } as never, kids);
+        for (const name of program?.textures ?? [])
+          if (!kids[name])
+            throw new Error(
+              `Transition '${n.transition}' needs a texture '${name}': pass it with textures: { ${name}: imageAsset }`,
+            );
+        const uniforms = program
+          ? { ...program.defaults, ...n.uniforms, _resolution: [w, h], ratio: w / Math.max(1, h) }
+          : { iResolution: [w, h], ...n.uniforms };
+        const sh = effect.makeShader(uniforms as never, kids);
         const p = this.#paint.reset().setShader(sh);
         if (clipRR) canvas.drawRRect(clipRR, p);
         else canvas.drawRect(Rect.fromWH(w, h), p);

@@ -201,6 +201,8 @@ export type SceneNode =
       effect: RuntimeEffect | string;
       uniforms: Record<string, number | readonly number[]>;
       shaderChildren: Record<string, Shader | ImageAsset | SceneNode>;
+      /** Set for gl-transitions: the shader's source is loaded by name. */
+      transition?: string;
     } & Base)
   | ({
       type: 'draw';
@@ -503,21 +505,100 @@ export function sequence(
   }
 }
 
+export interface TransitionOptions {
+  /** A transition name from gl-transitions, such as 'CrossZoom' or 'Dreamy'. See `listTransitions()`. */
+  name: string;
+  /** Seconds, centered on the cut. */
+  duration: number;
+  params?: Record<string, number | boolean | readonly number[]>;
+  easing?: (t: number) => number;
+}
+
+/**
+ * Blends from one scene to another with a gl-transitions shader. `progress` 0 shows `from`, 1 shows `to`.
+ * Both scenes render at the node's size.
+ */
+export function transition(
+  name: string,
+  progress: number,
+  from: Child,
+  to: Child,
+  options: {
+    params?: Record<string, number | boolean | readonly number[]>;
+    /** Extra images some transitions need, by name (see `TransitionInfo.textures`). */
+    textures?: Record<string, ImageAsset | Shader | SceneNode>;
+  } & NodeStyle = {},
+): SceneNode {
+  const { params = {}, textures = {}, ...style } = options;
+  const uniforms: Record<string, number | readonly number[]> = { progress: Math.min(1, Math.max(0, progress)) };
+  for (const [k, v] of Object.entries(params)) uniforms[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v;
+  const full = { size: { width: '100%', height: '100%' } } as const;
+  return {
+    type: 'shader',
+    effect: '',
+    transition: name,
+    uniforms,
+    shaderChildren: { _from: box(full, [from]), _to: box(full, [to]), ...textures },
+    style: { size: { width: '100%', height: '100%' }, ...style },
+    children: [],
+  };
+}
+
+/** One item of a `series`. */
+export interface SeriesItem {
+  duration: number;
+  /** Negative overlaps the item with the previous one. */
+  offset?: number;
+  render: (ctx: RenderContext) => Child;
+  /** A transition into the next item, centered on the cut. */
+  transition?: TransitionOptions;
+}
+
 /** Plays items one after another. Negative `offset` overlaps an item with the previous one. */
-export function series(
-  ctx: RenderContext,
-  items: readonly { duration: number; offset?: number; render: (ctx: RenderContext) => Child }[],
-): SceneNode | null {
+export function series(ctx: RenderContext, items: readonly SeriesItem[]): SceneNode | null {
   let start = 0;
   const out: SceneNode[] = [];
+  const starts: number[] = [];
   for (const item of items) {
     start += item.offset ?? 0;
-    const end = start + item.duration;
-    if (ctx.timestamp >= start && ctx.timestamp < end) {
-      const n = sequence({ start, end }, item.render);
+    starts.push(start);
+    start += item.duration;
+  }
+  // Inside a transition window, blend the two items around the cut.
+  for (let i = 0; i < items.length - 1; i++) {
+    const tr = items[i]!.transition;
+    if (!tr || tr.duration <= 0) continue;
+    const cut = starts[i]! + items[i]!.duration;
+    const a = cut - tr.duration / 2,
+      b = cut + tr.duration / 2;
+    if (ctx.timestamp >= a && ctx.timestamp < b) {
+      let p = (ctx.timestamp - a) / (b - a);
+      if (tr.easing) p = tr.easing(p);
+      const at = (k: number) => {
+        const s = starts[k]!,
+          d = items[k]!.duration;
+        return sequence({ start: s, end: s + d + tr.duration }, (c) =>
+          items[k]!.render({ ...c, timestamp: Math.min(Math.max(c.timestamp, 0), d) }),
+        );
+      };
+      const from = at(i);
+      const to = sequence({ start: starts[i + 1]! - tr.duration, end: starts[i + 1]! + items[i + 1]!.duration }, (c) =>
+        items[i + 1]!.render({
+          ...c,
+          timestamp: Math.max(0, c.timestamp - tr.duration),
+          duration: items[i + 1]!.duration,
+        }),
+      );
+      return transition(tr.name, p, from, to, { params: tr.params, position: 'absolute', inset: 0 });
+    }
+  }
+  for (let i = 0; i < items.length; i++) {
+    const s = starts[i]!,
+      end = s + items[i]!.duration;
+    if (ctx.timestamp >= s && ctx.timestamp < end) {
+      const n = sequence({ start: s, end }, items[i]!.render);
       if (n) out.push(n);
     }
-    start = end;
   }
   if (!out.length) return null;
   if (out.length === 1) return out[0]!;
