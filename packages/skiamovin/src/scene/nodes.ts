@@ -15,6 +15,7 @@ import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 import type { Grade } from './grading.ts';
+import type { SpringParams } from './physics.ts';
 import { tw } from './tw.ts';
 
 // Render context
@@ -32,6 +33,8 @@ export interface RenderContext<Props = any> {
   props: Props;
   /** Named moments in composition time, from the composition's `events` (for example `composition.meta.json`). */
   events: Readonly<Record<string, number>>;
+  /** 0 normally; rises from 0 to 1 during a sequence's `exit` time, after its end. */
+  exit: number;
 }
 
 /** Timing of the current sequence, in composition time. */
@@ -115,6 +118,13 @@ export interface VisualStyle {
   maskMode?: 'alpha' | 'luminance' | 'alpha-inverted' | 'luminance-inverted';
   /** Draws the node and its children in their own group, so blend modes inside only mix with each other. */
   isolate?: boolean;
+  /**
+   * Animates the node when its layout changes: it springs from where it was to where layout puts it. Nodes with
+   * the same `layoutId` in different sequences morph into each other across a cut.
+   */
+  layoutId?: string;
+  /** Spring for layout animation. Default `springs.smooth`. */
+  layoutTransition?: SpringParams;
   /** Photoshop-style layer styles that follow the shape of the node's content. */
   layerStyle?: LayerStyle;
   /** Grades, effects or blur applied to everything drawn beneath the node, inside its shape. See `adjustmentLayer`. */
@@ -247,6 +257,16 @@ export interface AudioClip {
 
 // Builders
 
+/** ∫₀ᵗ f with Simpson's rule, for speed ramps. */
+function integrate(f: (t: number) => number, t: number): number {
+  if (t <= 0) return 0;
+  const n = Math.max(16, Math.ceil(t * 120)) * 2;
+  const h = t / n;
+  let sum = f(0) + f(t);
+  for (let i = 1; i < n; i++) sum += f(i * h) * (i % 2 ? 4 : 2);
+  return (sum * h) / 3;
+}
+
 /** Expands a `class` string into style; keys set directly in the style win over classes. */
 function withClass<T extends NodeStyle>(style: T): T {
   if (!style.class) return style;
@@ -335,8 +355,14 @@ export function image(
 
 export interface VideoProps {
   fit?: Fit;
+  /** Part of the source to play, in source seconds. */
   trim?: { start?: number; end?: number };
   playbackRate?: number;
+  /**
+   * Speed over time for ramps, freezes (0) and reverse (negative): `speed: (t) => (t < 1 ? 1 : 0.25)`. The
+   * source position is the integral of the speed. Audio from a clip with `speed` is muted.
+   */
+  speed?: (t: number) => number;
   loop?: boolean;
   volume?: number | ((timestamp: number) => number);
   muted?: boolean;
@@ -344,10 +370,12 @@ export interface VideoProps {
 
 export function video(media: Input | InputVideoTrack, style: NodeStyle & VideoProps = {}): SceneNode {
   style = withClass(style);
-  const { fit = 'fill', trim, playbackRate = 1, loop = false, volume = 1, muted = false, ...rest } = style;
+  const { fit = 'fill', trim, playbackRate = 1, loop = false, volume = 1, speed, muted: _muted, ...rest } = style;
+  const muted = style.muted === true || speed !== undefined;
   const scope = currentScope();
   const start = trim?.start ?? 0;
-  let sourceTime = start + scope.ctx.timestamp * playbackRate;
+  let sourceTime = start + (speed ? integrate(speed, scope.ctx.timestamp) : scope.ctx.timestamp * playbackRate);
+  if (sourceTime < start) sourceTime = start;
   const end = trim?.end;
   if (end !== undefined && sourceTime >= end)
     sourceTime = loop ? start + ((sourceTime - start) % (end - start)) : end - 1e-6;
@@ -535,25 +563,35 @@ export function clipTo(base: SceneNode, ...layers: Child[]): SceneNode {
 
 /** Shows content during `[start, end)` seconds with local time. */
 export function sequence(
-  range: { start: number; end?: number },
+  range: {
+    start: number;
+    end?: number;
+    /** Seconds the content stays after `end`, with `ctx.exit` rising from 0 to 1, for exit animations. */
+    exit?: number;
+    /** Maps time inside the sequence, for speed ramps, freezes or reverse: `(t) => t * 0.5`. */
+    time?: (t: number) => number;
+  },
   render: (ctx: RenderContext) => Child,
 ): SceneNode | null {
   const scope = currentScope();
   const t = scope.ctx.timestamp;
   const end = range.end ?? Infinity;
-  if (t < range.start || t >= end) return null;
+  const exitDur = Math.max(0, range.exit ?? 0);
+  if (t < range.start || t >= end + exitDur) return null;
   const parentDur = scope.ctx.duration;
   const duration = Number.isFinite(end) ? end - range.start : parentDur - range.start;
+  const localT = range.time ? range.time(t - range.start) : t - range.start;
   const local: RenderContext = {
     ...scope.ctx,
-    timestamp: t - range.start,
-    frame: Math.round((t - range.start) * scope.ctx.frameRate),
+    timestamp: localT,
+    frame: Math.round(localT * scope.ctx.frameRate),
     duration,
+    exit: t >= end && exitDur > 0 ? Math.min(1, (t - end) / exitDur) : 0,
   };
   pushScope({
     ctx: local,
     absStart: scope.absStart + range.start,
-    absEnd: Math.min(scope.absEnd, scope.absStart + end),
+    absEnd: Math.min(scope.absEnd, scope.absStart + end + exitDur),
   });
   try {
     const c = render(local);

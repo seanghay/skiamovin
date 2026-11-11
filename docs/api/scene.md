@@ -751,6 +751,26 @@ counter(value, { decimals?, locale?, prefix?, suffix?, grouping? }): string // u
 graphemeCount(text, locale?): number                                       // for visibleGraphemes
 ```
 
+### Motion that follows layout
+
+| Feature | Description |
+|---|---|
+| `layoutId` (style) | When the node's layout box changes, it springs from where it was to where layout puts it, instead of jumping. Two nodes with the same `layoutId` in different sequences move into each other across the cut. `layoutTransition` sets the spring (default `springs.smooth`) |
+| `states(timestamp, { variants, changes, spring? })` | Named states switched at given times, with springs between them (colors blend). Like Motion's variants |
+| `sequence({ start, end, exit })` | Keeps content for `exit` seconds after `end`, with `ctx.exit` rising from 0 to 1, for exit animations |
+| `sequence({ ..., time })` | Maps time inside a sequence, for speed ramps, freezes and reverse |
+| `video(media, { speed })` | A speed curve for ramps (`(t) => ...`); the source position is its integral. Audio from such a clip is muted |
+| `composition.withSize(w, h)` | The same composition laid out again at another size, for 16:9, 9:16 and 1:1 versions |
+
+Layout animation is a pure function of time: the renderer computes layout for earlier frames when it needs
+them (and reuses them when rendering in order), so any frame renders the same in any order or worker.
+
+```ts
+render: (ctx) => box({ class: 'flex flex-row', justifyContent: ctx.timestamp < 1 ? 'flex-start' : 'flex-end' }, [
+  box({ class: 'size-10 bg-white rounded-lg', layoutId: 'dot' }),
+])
+```
+
 ### Physics-based motion
 
 Springs, momentum and simple dynamics in the style of Apple's interfaces. All are solved exactly from the

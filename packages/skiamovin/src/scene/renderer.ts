@@ -51,6 +51,7 @@ import {
   type TextProps,
   type Transform,
 } from './nodes.ts';
+import { type SpringParams, springPath, springSettlingTime, springs } from './physics.ts';
 import { segmentUnits } from './text-effects.ts';
 import { loadTransitions, transitionProgram } from './transitions.ts';
 
@@ -113,6 +114,15 @@ export interface RendererOptions {
   encode?: boolean;
   /** Web: draw into the WebGL canvas and capture each frame as an ImageBitmap (`lastBitmap`). */
   capture?: boolean;
+}
+
+interface LayoutBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  parent: string | null;
+  spring?: SpringParams;
 }
 
 interface Box {
@@ -347,6 +357,7 @@ export class FrameRenderer {
       height: this.comp.height,
       props: this.props,
       events: this.comp.events,
+      exit: 0,
     };
     pushScope({ ctx, absStart: 0, absEnd: this.duration });
     try {
@@ -409,7 +420,7 @@ export class FrameRenderer {
       children: nodes,
     };
     this.#videoCounter.clear();
-    await this.#paintTree(canvas, root, this.comp.width, this.comp.height);
+    await this.#paintTree(canvas, root, this.comp.width, this.comp.height, true);
     canvas.restore();
     this.surface!.flushAndSubmit();
     if (glCanvas) {
@@ -625,10 +636,119 @@ export class FrameRenderer {
     return out;
   }
 
+  // Layout animation
+
+  /** Per frame: layout boxes of nodes with a `layoutId`, relative to their nearest animated ancestor. */
+  #layoutHistory = new Map<number, Map<string, LayoutBox>>();
+  /** Offsets to draw animated nodes at this frame. */
+  #layoutOffsets = new Map<SceneNode, { dx: number; dy: number; sx: number; sy: number }>();
+
+  /** Boxes of nodes with a `layoutId`, relative to their nearest ancestor that also has one. */
+  #layoutBoxes(root: SceneNode, boxes: ReadonlyMap<SceneNode, Box>): Map<string, LayoutBox & { node: SceneNode }> {
+    const out = new Map<string, LayoutBox & { node: SceneNode }>();
+    const walk = (n: SceneNode, ax: number, ay: number, rx: number, ry: number, parent: string | null) => {
+      const b = boxes.get(n);
+      if (!b) return;
+      const x = ax + b.x,
+        y = ay + b.y;
+      let px = rx,
+        py = ry,
+        p = parent;
+      const id = n.style.layoutId;
+      if (id) {
+        out.set(id, {
+          x: x - rx,
+          y: y - ry,
+          w: b.width,
+          h: b.height,
+          parent,
+          node: n,
+          spring: n.style.layoutTransition,
+        });
+        px = x;
+        py = y;
+        p = id;
+      }
+      for (const c of n.children) walk(c, x, y, px, py, p);
+    };
+    walk(root, 0, 0, 0, 0, null);
+    return out;
+  }
+
+  /** Layout-only pass for another moment, for layout animation history. */
+  async #layoutAt(frame: number): Promise<Map<string, LayoutBox>> {
+    const cached = this.#layoutHistory.get(frame);
+    if (cached) return cached;
+    const nodes = this.buildTree(frame / this.comp.frameRate);
+    await this.#prepare(nodes);
+    const root: SceneNode = {
+      type: 'box',
+      style: { size: { width: this.comp.width, height: this.comp.height } },
+      children: nodes,
+    };
+    const found = this.#layoutBoxes(root, this.#layout(root, this.comp.width, this.comp.height));
+    const plain = new Map<string, LayoutBox>();
+    for (const [k, v] of found) plain.set(k, { x: v.x, y: v.y, w: v.w, h: v.h, parent: v.parent, spring: v.spring });
+    this.#remember(frame, plain);
+    return plain;
+  }
+
+  #remember(frame: number, boxes: Map<string, LayoutBox>): void {
+    if (this.#layoutHistory.size > 900) this.#layoutHistory.delete(this.#layoutHistory.keys().next().value!);
+    this.#layoutHistory.set(frame, boxes);
+  }
+
+  async #animateLayout(root: SceneNode, boxes: ReadonlyMap<SceneNode, Box>): Promise<void> {
+    this.#layoutOffsets.clear();
+    const now = this.#layoutBoxes(root, boxes);
+    if (!now.size) return;
+    const frame = this.#frame;
+    const fps = this.comp.frameRate;
+    const plain = new Map<string, LayoutBox>();
+    for (const [k, v] of now) plain.set(k, { x: v.x, y: v.y, w: v.w, h: v.h, parent: v.parent, spring: v.spring });
+    this.#remember(frame, plain);
+    // Look back far enough for the slowest spring in use to settle.
+    let settle = 0;
+    for (const v of now.values()) settle = Math.max(settle, springSettlingTime(v.spring ?? springs.smooth, 0.002));
+    const back = Math.min(frame, Math.ceil(settle * fps) + 1);
+    const history: Map<string, LayoutBox>[] = [];
+    for (let f = frame - back; f < frame; f++) history.push(await this.#layoutAt(f));
+    history.push(plain);
+    const t = frame / fps;
+    for (const [id, cur] of now) {
+      const targets: Record<'x' | 'y' | 'w' | 'h', { at: number; to: number }[]> = { x: [], y: [], w: [], h: [] };
+      let prev: LayoutBox | undefined;
+      let first: LayoutBox | undefined;
+      history.forEach((frameBoxes, i) => {
+        const bx = frameBoxes.get(id);
+        if (!bx) return;
+        first ??= bx;
+        const at = (frame - back + i) / fps;
+        for (const k of ['x', 'y', 'w', 'h'] as const) {
+          if (prev && Math.abs(prev[k] - bx[k]) > 0.01) targets[k].push({ at, to: bx[k] });
+        }
+        prev = bx;
+      });
+      if (!first) continue;
+      const params = cur.spring ?? springs.smooth;
+      const value = (k: 'x' | 'y' | 'w' | 'h') =>
+        targets[k].length
+          ? springPath({ timestamp: t, from: first![k], targets: targets[k], spring: params })[0]
+          : cur[k];
+      const sx = cur.w > 0 ? value('w') / cur.w : 1,
+        sy = cur.h > 0 ? value('h') / cur.h : 1;
+      const dx = value('x') - cur.x,
+        dy = value('y') - cur.y;
+      if (Math.abs(dx) > 1e-3 || Math.abs(dy) > 1e-3 || Math.abs(sx - 1) > 1e-4 || Math.abs(sy - 1) > 1e-4)
+        this.#layoutOffsets.set(cur.node, { dx, dy, sx, sy });
+    }
+  }
+
   // Painting
 
-  async #paintTree(canvas: Canvas, root: SceneNode, w: number, h: number): Promise<void> {
+  async #paintTree(canvas: Canvas, root: SceneNode, w: number, h: number, top = false): Promise<void> {
     const boxes = this.#layout(root, w, h);
+    if (top) await this.#animateLayout(root, boxes);
     // Load video frames first so painting can run synchronously.
     const frames = new Map<SceneNode, Image | null>();
     const collect = async (n: SceneNode) => {
@@ -679,11 +799,27 @@ export class FrameRenderer {
     const { width: w, height: h } = b;
     canvas.save();
     canvas.translate([b.x, b.y]);
+    // Layout animation: draw the node where its spring is, not where layout put it this frame.
+    const moved = this.#layoutOffsets.get(n);
+    if (moved) {
+      canvas.translate([moved.dx, moved.dy]);
+      if (moved.sx !== 1 || moved.sy !== 1) canvas.scale([moved.sx, moved.sy]);
+    }
 
     // Transforms apply after layout, so they don't move siblings.
     if (st.transform) this.#applyTransform(canvas, st.transform, st.transformOrigin, w, h);
 
-    const rr = this.#rrect(st.borderRadius, w, h);
+    // Keep corners round while a layout animation scales the node.
+    const radiusScale = moved && (moved.sx !== 1 || moved.sy !== 1) ? 2 / (moved.sx + moved.sy) : 1;
+    const rr = this.#rrect(
+      radiusScale === 1 || st.borderRadius === undefined
+        ? st.borderRadius
+        : typeof st.borderRadius === 'number'
+          ? st.borderRadius * radiusScale
+          : (st.borderRadius.map((r) => r * radiusScale) as unknown as [number, number, number, number]),
+      w,
+      h,
+    );
     const opacity = st.opacity ?? 1;
 
     // Glass: bend and frost what's behind, inside the shape.

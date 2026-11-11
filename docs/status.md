@@ -22,6 +22,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Compositing | Alpha and luminance mattes (with inverted modes), `clipTo` clipping masks, `adjustmentLayer`, `isolate`, Photoshop-style `layerStyle`, text `warp` and `Path.warp` |
 | Utility classes | A `class` prop on every node with Tailwind-style utilities and Tailwind's default theme; `tw()`, `tailwindTheme` |
 | Color grading | `grade` on any node: `lut` (`.cube`, LUT images, Hald; tetrahedral, checked against ffmpeg), `adjust`, `curves`, `levels`, `gradeWheels`, `cdl`, `gradientMap`, `channelMixer`, `posterize`, `threshold`, `blendGrades`, each with `strength` |
+| Layout motion | `layoutId` layout animation and shared elements (pure in time), `states()`, sequence `exit` and `time`, video `speed` ramps, `Composition.withSize()` |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

@@ -42,10 +42,13 @@ test('transitions: metadata, endpoints and series', async () => {
   const s = (t: number) =>
     frame(
       (ts) =>
-        series({ timestamp: ts, duration: 4, frame: 0, frameRate: 30, width: W, height: H, props: {}, events: {} }, [
-          { duration: 1, render: red, transition: { name: fade.name, duration: 0.5 } },
-          { duration: 1, render: blue },
-        ]),
+        series(
+          { timestamp: ts, duration: 4, frame: 0, frameRate: 30, width: W, height: H, props: {}, events: {}, exit: 0 },
+          [
+            { duration: 1, render: red, transition: { name: fade.name, duration: 0.5 } },
+            { duration: 1, render: blue },
+          ],
+        ),
       t,
     );
   assert.deepEqual(center(await s(0.5)), [255, 0, 0]);

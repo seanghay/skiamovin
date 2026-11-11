@@ -124,7 +124,11 @@ any node: images, video, text or a whole scene.
 **Done when:** classes cover the utilities that make sense for video; the transition, effect and filter
 galleries render in CI on both builds; and LUT output is within 1/255 of ffmpeg's `lut3d` filter.
 
-## Phase 4: Motion that follows layout
+## Phase 4: Motion that follows layout (done)
+
+Implemented: `states()`, `layoutId` animation and shared elements, exit animations, `withSize`, speed ramps
+and time mapping. Not yet: cropping video around its subject when changing aspect ratio, and crossfading
+shared elements whose content differs.
 
 | Idea | From | What we add |
 |---|---|---|

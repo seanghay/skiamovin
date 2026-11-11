@@ -120,6 +120,8 @@ export type { PlayerOptions } from './player.ts';
 export { Player } from './player.ts';
 export type { CompositionSinkOptions, DiscardReason, RenderOptions } from './render.ts';
 export { CompositionAudioSink, CompositionSink, Render } from './render.ts';
+export type { StatesOptions } from './states.ts';
+export { states } from './states.ts';
 export { tailwindTheme } from './tailwind-theme.ts';
 export type { RangeShape, TextAnimatorOptions } from './text-effects.ts';
 export { counter, graphemeCount, scramble, textAnimator } from './text-effects.ts';

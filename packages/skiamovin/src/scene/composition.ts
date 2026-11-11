@@ -42,6 +42,7 @@ export class Composition<Props = Record<string, unknown>> {
   readonly defaultProps: Props;
   readonly render: (ctx: RenderContext<Props>) => Child;
   readonly #duration: CompositionOptions<Props>['duration'];
+  readonly #options: CompositionOptions<Props>;
 
   constructor(options: CompositionOptions<Props>) {
     if (!(options.width > 0 && options.height > 0))
@@ -58,6 +59,21 @@ export class Composition<Props = Record<string, unknown>> {
     this.defaultProps = (options.defaultProps ?? {}) as Props;
     this.render = options.render;
     this.#duration = options.duration;
+    this.#options = options;
+  }
+
+  /**
+   * The same composition at another size, laid out again rather than scaled: one composition can be rendered as
+   * 16:9, 9:16 and 1:1. Lay it out with percentages and flexbox so it adapts; `ctx.width` and `ctx.height` give
+   * the size.
+   */
+  withSize(width: number, height: number): Composition<Props> {
+    return new Composition({ ...this.#options, width, height });
+  }
+
+  /** The same composition with other options, such as `events` or `defaultProps`. */
+  with(options: Partial<CompositionOptions<Props>>): Composition<Props> {
+    return new Composition({ ...this.#options, ...options });
   }
 
   /** Resolves the duration in seconds for the given props. */
