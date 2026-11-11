@@ -841,6 +841,33 @@ from `render` every frame is cheap, and frames look positions up by time (`body`
 `contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
 a test checks the Node and WebAssembly builds give exactly the same positions.
 
+### `captions`
+
+```ts
+const srt = await readFile('talk.srt', 'utf8');
+captions(srt, { preset: 'pop', position: 'absolute', inset: { left: 80, right: 80, bottom: 200 } });
+```
+
+Captions for the current time, from the text of an SRT or WebVTT file or from a list of cues. The box centers its
+text and is empty when no cue is showing.
+
+| Preset | What it shows |
+|---|---|
+| `'subtitle'` (default) | The whole line on a dark rounded box, like film subtitles |
+| `'karaoke'` | The whole line, with words lighting up in the accent color as they're spoken |
+| `'pop'` | Words appear as they're spoken with a quick spring, the current one in the accent color |
+| `'word'` | One large word at a time |
+
+Options: `time` (default: the current time of the composition or sequence), `offset` in seconds, `fontSize`,
+`fontFamily`, `fontWeight`, `color`, `accent`, `uppercase` (on for `pop` and `word`) and `maxWidth`.
+
+| Function | What it does |
+|---|---|
+| `parseCaptions(text)` | Reads SRT or WebVTT into cues. Tags are removed, and WebVTT word timings (`<00:00:01.200>word`) are kept |
+| `cuesFromWords(words, { maxChars?, maxDuration?, gap? })` | Groups timed words, such as speech recognition output, into cues. A cue ends after 32 characters, 3 seconds, a 0.6 second pause or the end of a sentence |
+
+Without word timings, words are spread over their cue by length.
+
 ### `code`
 
 ```ts

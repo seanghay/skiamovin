@@ -27,6 +27,8 @@ export {
 export type { AssetSource, AudioAnalysis, FontAssetOptions, LutAssetOptions } from './assets.ts';
 export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, LutAsset, readSource, SvgAsset } from './assets.ts';
 export { backgrounds } from './backgrounds.ts';
+export type { CaptionOptions, CaptionWord, Cue } from './captions.ts';
+export { captions, cuesFromWords, parseCaptions } from './captions.ts';
 export type { CodeOptions } from './code.ts';
 export { code } from './code.ts';
 export type { CompositionOptions } from './composition.ts';
