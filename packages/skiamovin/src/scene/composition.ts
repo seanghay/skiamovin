@@ -20,6 +20,12 @@ export interface CompositionOptions<Props> {
    */
   textRendering?: 'outlines' | 'native';
   /**
+   * Motion blur, as from a film camera's shutter. `shutter` is the shutter angle in degrees: 180 is the usual film
+   * look, 360 blurs across the whole frame. Each frame averages `samples` moments (default 8), so it takes that many
+   * times longer to render.
+   */
+  motionBlur?: { shutter: number; samples?: number };
+  /**
    * Named moments in seconds, such as `{ drop: 2.4 }`, available as `ctx.events` and usable as `Timeline` labels.
    * Keep them in a `composition.meta.json` next to the composition so a timeline editor can move them.
    */
@@ -38,6 +44,7 @@ export class Composition<Props = Record<string, unknown>> {
   readonly colorSpace: CompositionOptions<Props>['colorSpace'];
   readonly fonts: FontAsset[];
   readonly textRendering: 'outlines' | 'native';
+  readonly motionBlur: CompositionOptions<Props>['motionBlur'];
   readonly events: Readonly<Record<string, number>>;
   readonly defaultProps: Props;
   readonly render: (ctx: RenderContext<Props>) => Child;
@@ -55,6 +62,7 @@ export class Composition<Props = Record<string, unknown>> {
     this.colorSpace = options.colorSpace;
     this.fonts = options.fonts ?? [];
     this.textRendering = options.textRendering ?? 'outlines';
+    this.motionBlur = options.motionBlur;
     this.events = Object.freeze({ ...(options.events ?? {}) });
     this.defaultProps = (options.defaultProps ?? {}) as Props;
     this.render = options.render;

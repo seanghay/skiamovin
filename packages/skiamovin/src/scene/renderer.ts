@@ -232,6 +232,7 @@ export class FrameRenderer {
   surface: Surface | null = null;
   /** Output surfaces used in turn on macOS, so the encoder reads frames without copying. */
   #ring: Surface[] = [];
+  #accum: Surface | null = null;
   #ringIndex = 0;
   readonly #encode: boolean;
   readonly #captureWanted: boolean;
@@ -339,9 +340,9 @@ export class FrameRenderer {
     return this.#ring.length ? FrameRenderer.RING - 2 : 0;
   }
 
-  #makeSurface(w: number, h: number): Surface {
-    const cs = colorSpaceCode(this.comp.colorSpace);
-    const info = new ImageInfo(w, h, ColorType.N32, 2, cs);
+  #makeSurface(w: number, h: number, linear = false): Surface {
+    const cs = linear ? ColorSpace.LinearSRGB : colorSpaceCode(this.comp.colorSpace);
+    const info = new ImageInfo(w, h, linear ? ColorType.RGBA_F16 : ColorType.N32, 2, cs);
     const s = this.context
       ? gpu.surfaces.renderTarget(this.context, gpu.Budgeted.Yes, info, { sampleCount: 1 })
       : surfaces.raster(info);
@@ -398,8 +399,6 @@ export class FrameRenderer {
   async renderFrame(timestamp: number): Promise<Surface> {
     await this.init();
     this.#frame = Math.round(timestamp * this.comp.frameRate);
-    const nodes = this.buildTree(timestamp);
-    await this.#prepare(nodes);
     if (this.#ring.length) this.surface = this.#ring[this.#ringIndex++ % this.#ring.length]!;
     const glCanvas = this.#glCanvas;
     if (glCanvas && (glCanvas.width !== this.outWidth || glCanvas.height !== this.outHeight)) {
@@ -407,6 +406,41 @@ export class FrameRenderer {
       glCanvas.width = this.outWidth;
       glCanvas.height = this.outHeight;
     }
+    const blur = this.comp.motionBlur;
+    const samples = blur && blur.shutter > 0 ? Math.max(1, Math.round(blur.samples ?? 8)) : 1;
+    if (blur && samples > 1) {
+      // Average moments spread over the time the shutter is open, centered on the frame, in linear light and half
+      // floats so the result doesn't band.
+      const exposure = blur.shutter / 360 / this.comp.frameRate;
+      this.#accum ??= this.#makeSurface(this.outWidth, this.outHeight, true);
+      const acc = this.#accum.canvas();
+      acc.clear(0);
+      const add = new Paint().setBlendMode(BlendMode.Plus).setAlphaf(1 / samples);
+      for (let i = 0; i < samples; i++) {
+        await this.#drawScene(timestamp + exposure * ((i + 0.5) / samples - 0.5));
+        const img = this.surface!.imageSnapshot();
+        acc.drawImage(img, [0, 0], add);
+        img.delete();
+      }
+      add.delete();
+      const out = this.surface!.canvas();
+      out.clear(0);
+      const img = this.#accum.imageSnapshot();
+      out.drawImage(img, [0, 0]);
+      img.delete();
+    } else await this.#drawScene(timestamp);
+    this.surface!.flushAndSubmit();
+    if (glCanvas) {
+      // Synchronously after drawing, so no other renderer on this thread can touch the canvas in between.
+      this.lastBitmap?.close();
+      this.lastBitmap = glCanvas.transferToImageBitmap();
+    }
+    return this.surface!;
+  }
+
+  async #drawScene(timestamp: number): Promise<void> {
+    const nodes = this.buildTree(timestamp);
+    await this.#prepare(nodes);
     const canvas = this.surface!.canvas();
     canvas.clear(this.comp.background ?? 0);
     canvas.save();
@@ -426,13 +460,6 @@ export class FrameRenderer {
     this.#videoCounter.clear();
     await this.#paintTree(canvas, root, this.comp.width, this.comp.height, true);
     canvas.restore();
-    this.surface!.flushAndSubmit();
-    if (glCanvas) {
-      // Synchronously after drawing, so no other renderer on this thread can touch the canvas in between.
-      this.lastBitmap?.close();
-      this.lastBitmap = glCanvas.transferToImageBitmap();
-    }
-    return this.surface!;
   }
 
   // Loading assets and video frames
@@ -1452,6 +1479,10 @@ export class FrameRenderer {
     this.#effects.clear();
     this.#tree.delete();
     this.#paint.delete();
+    for (const d of this.#deferred.values()) d.free?.(d.layout);
+    this.#deferred.clear();
+    this.#accum?.delete();
+    this.#accum = null;
     this.lastBitmap?.close();
     this.lastBitmap = null;
     if (this.#ring.length) {

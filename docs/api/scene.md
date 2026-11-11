@@ -86,6 +86,12 @@ interface CompositionOptions<Props> {
    * smoothly. 'native' uses the platform's glyph rasterizer.
    */
   textRendering?: 'outlines' | 'native';
+  /**
+   * Motion blur from a film camera's shutter. `shutter` is the angle in degrees (180 is the usual film look, 360
+   * blurs across the whole frame). Each frame averages `samples` moments (default 8) centered on the frame's time,
+   * in linear light, so it takes that many times longer to render. Still things stay sharp.
+   */
+  motionBlur?: { shutter: number; samples?: number };
   /** Named moments in seconds, such as `{ drop: 2.4 }`. Available as `ctx.events` and as `Timeline` labels. */
   events?: Record<string, number>;
   defaultProps?: Props;
