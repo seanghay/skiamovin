@@ -29,6 +29,8 @@ export { analyzeAudio, FontAsset, ImageAsset, LottieAsset, LutAsset, readSource,
 export { backgrounds } from './backgrounds.ts';
 export type { CompositionOptions } from './composition.ts';
 export { Composition, CompositionModule } from './composition.ts';
+export type { CodeOptions } from './code.ts';
+export { code } from './code.ts';
 export type { DiagramOptions, DiagramTheme } from './diagram.ts';
 export { diagram, diagramThemes } from './diagram.ts';
 export type { Effect, GlassOptions, LayerStyle } from './effects.ts';

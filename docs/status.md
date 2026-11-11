@@ -27,6 +27,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Math | `math()`: LaTeX typeset in Rust with RaTeX and the KaTeX fonts (OFL), pixel-identical across builds, with a `write` draw-on animation |
 | Graphs and camera | `axes()`, `plot`, `numberLine()`, `vectorField`, a panning and zooming `camera()`, and `create`, `fadeIn` and `indicate` reveals |
 | Diagrams | `diagram()`: Mermaid laid out by Pele, measured with the composition's fonts and drawn as scene nodes, with themes, a draw-on reveal and styles by id; same on Node and WebAssembly |
+| Code blocks | `code()`: Shiki highlighting with VS Code themes, line numbers, line highlights, and animation between versions token by token |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

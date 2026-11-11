@@ -3,7 +3,17 @@
 import { parseCssColor } from '../core/color.ts';
 import { Path } from '../core/skia.ts';
 import { Easing } from './animation.ts';
-import { box, type NodeStyle, type SceneNode, type Span, span, type TextProps, text } from './nodes.ts';
+import {
+  box,
+  type Deferred,
+  type MeasureText,
+  type NodeStyle,
+  type SceneNode,
+  type Span,
+  span,
+  type TextProps,
+  text,
+} from './nodes.ts';
 
 export interface DiagramTheme {
   background: string;
@@ -69,8 +79,7 @@ export interface DiagramOptions {
   styles?: Readonly<Record<string, NodeStyle>>;
 }
 
-/** @internal */
-export interface DiagramSpec {
+interface DiagramSpec {
   source: string;
   theme: DiagramTheme;
   fontSize: number;
@@ -88,12 +97,15 @@ export interface DiagramSpec {
 export function diagram(source: string, options: DiagramOptions & NodeStyle = {}): SceneNode {
   const { theme, fontSize = 20, fontFamily, monoFamily, draw, styles, ...style } = options;
   const t = typeof theme === 'string' ? diagramThemes[theme] : { ...diagramThemes.dark, ...theme };
-  return {
-    type: 'box',
-    style,
-    children: [],
-    diagram: { source, theme: t, fontSize, fontFamily, monoFamily, draw, styles },
+  const spec: DiagramSpec = { source, theme: t, fontSize, fontFamily, monoFamily, draw, styles };
+  const deferred: Deferred<DiagramLayout> = {
+    key: `diagram:${JSON.stringify([source, t, fontSize, fontFamily, monoFamily])}`,
+    load: () => loadDiagram(source),
+    layout: (measure) => layoutDiagram(spec, measure),
+    build: (layout) => ({ width: layout.width, height: layout.height, children: diagramNodes(layout, spec) }),
+    free: freeDiagram,
   };
+  return { type: 'box', style, children: [], deferred };
 }
 
 // Loading Pele
@@ -103,8 +115,8 @@ let pele: Pele | null = null;
 let peleLoading: Promise<Pele> | null = null;
 const loadedSources = new Set<string>();
 
-/** Loads Pele and the code for the diagram's type. @internal */
-export async function loadDiagram(source: string): Promise<void> {
+/** Loads Pele and the code for the diagram's type. */
+async function loadDiagram(source: string): Promise<void> {
   peleLoading ??= import('pele/lazy').then((m) => {
     pele = m;
     return m;
@@ -117,9 +129,6 @@ export async function loadDiagram(source: string): Promise<void> {
 }
 
 // Layout
-
-/** Measures text the way the renderer draws it. @internal */
-export type MeasureText = (content: (string | Span)[], props: TextProps) => { width: number; baseline: number };
 
 type Kind = 'node' | 'edge' | 'label' | 'other';
 
@@ -152,8 +161,8 @@ interface Item {
   slot: number;
 }
 
-/** A diagram converted to shapes and text. @internal */
-export interface DiagramLayout {
+/** A diagram converted to shapes and text. */
+interface DiagramLayout {
   width: number;
   height: number;
   items: Item[];
@@ -415,8 +424,8 @@ function kindOf(cls: string): Kind {
   return 'node';
 }
 
-/** Lays out a diagram with Pele and converts it to shapes and text, or null before `loadDiagram`. @internal */
-export function layoutDiagram(spec: DiagramSpec, measure: MeasureText): DiagramLayout | null {
+/** Lays out a diagram with Pele and converts it to shapes and text, or null before `loadDiagram`. */
+function layoutDiagram(spec: DiagramSpec, measure: MeasureText): DiagramLayout | null {
   if (!pele || !loadedSources.has(spec.source)) return null;
   const { theme, fontSize } = spec;
   const mono = spec.monoFamily;
@@ -794,8 +803,8 @@ function assignSlots(items: Item[]): void {
       l.slot = edges.find((e) => e.id === l.id)?.slot ?? nodes.find((n) => n.id === l.id)?.slot ?? 0;
 }
 
-/** Frees a layout's paths. @internal */
-export function freeDiagram(layout: DiagramLayout): void {
+/** Frees a layout's paths. */
+function freeDiagram(layout: DiagramLayout): void {
   for (const it of layout.items) for (const s of it.shapes) s.path.delete();
 }
 
@@ -812,8 +821,8 @@ function decompose(m: Affine) {
   ];
 }
 
-/** Scene nodes for a laid-out diagram at a reveal progress. @internal */
-export function diagramNodes(layout: DiagramLayout, spec: DiagramSpec): SceneNode[] {
+/** Scene nodes for a laid-out diagram at a reveal progress. */
+function diagramNodes(layout: DiagramLayout, spec: DiagramSpec): SceneNode[] {
   const draw = spec.draw === undefined ? 1 : clamp01(spec.draw);
   const lag = 0.5;
   const span = 1 + Math.max(0, layout.slots - 1) * lag;

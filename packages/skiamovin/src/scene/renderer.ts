@@ -38,19 +38,12 @@ import { borrowImageFromVideoSample, drawFit } from '../media/index.ts';
 import { type Style, TaffyTree } from '../taffy/index.ts';
 import { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Composition } from './composition.ts';
-import {
-  type DiagramLayout,
-  type DiagramSpec,
-  diagramNodes,
-  freeDiagram,
-  layoutDiagram,
-  loadDiagram,
-} from './diagram.ts';
 import { buildEffects, buildGlass, buildLayerStyle } from './effects.ts';
 import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
   type AudioClip,
   type Gradient,
+  type MeasureText,
   popScope,
   pushScope,
   type RenderContext,
@@ -258,7 +251,7 @@ export class FrameRenderer {
   #videoTracks = new Map<Input | InputVideoTrack, InputVideoTrack | null>();
   #videoCounter = new Map<InputVideoTrack, number>();
   #paint = new Paint();
-  #diagrams = new Map<string, DiagramLayout>();
+  #deferred = new Map<string, { layout: unknown; free?: (layout: any) => void }>();
   #initialized = false;
 
   constructor(comp: Composition<any>, options: RendererOptions = {}) {
@@ -378,7 +371,7 @@ export class FrameRenderer {
         else out.push(c as SceneNode);
       };
       walk(this.comp.render(ctx));
-      this.#expandDiagrams(out);
+      this.#expandDeferred(out);
       return out;
     } finally {
       popScope();
@@ -461,8 +454,7 @@ export class FrameRenderer {
         );
       }
       if (n.type === 'shader' && n.transition) loads.push(loadTransitions());
-      if (n.type === 'box' && n.diagram && !this.#diagrams.has(this.#diagramKey(n.diagram)))
-        loads.push(loadDiagram(n.diagram.source));
+      if (n.type === 'box' && n.deferred && !this.#deferred.has(n.deferred.key)) loads.push(n.deferred.load());
       if (n.type === 'shader')
         for (const c of Object.values(n.shaderChildren)) {
           if (c instanceof ImageAsset && !c._loaded()) loads.push(c._get());
@@ -474,37 +466,35 @@ export class FrameRenderer {
     };
     nodes.forEach(visit);
     await Promise.all(loads);
-    this.#expandDiagrams(nodes);
+    this.#expandDeferred(nodes);
   }
 
-  #diagramKey(d: DiagramSpec): string {
-    return JSON.stringify([d.source, d.theme, d.fontSize, d.fontFamily, d.monoFamily]);
-  }
-
-  /** Fills diagram nodes with their shapes and text, laying out each diagram once. */
-  #expandDiagrams(nodes: SceneNode[]): void {
+  /** Fills deferred boxes (diagrams, code) with their children, laying each one out once. */
+  #expandDeferred(nodes: SceneNode[]): void {
+    const measure: MeasureText = (content, props) => {
+      const p = this.#paragraphFor({ type: 'text', content, text: props, style: {}, children: [] });
+      p.layout(1e6);
+      return { width: p.maxIntrinsicWidth(), baseline: p.alphabeticBaseline() };
+    };
     const visit = (n: SceneNode) => {
-      if (n.type === 'box' && n.diagram && n.children.length === 0) {
-        const key = this.#diagramKey(n.diagram);
-        let layout = this.#diagrams.get(key);
-        if (!layout) {
-          const made = layoutDiagram(n.diagram, (content, props) => {
-            const p = this.#paragraphFor({ type: 'text', content, text: props, style: {}, children: [] });
-            p.layout(1e6);
-            return { width: p.maxIntrinsicWidth(), baseline: p.alphabeticBaseline() };
-          });
-          // Not loaded yet: `#prepare` loads Pele and expands it again.
-          if (!made) return;
-          layout = made;
-          if (this.#diagrams.size >= 32) {
-            const [oldKey, old] = this.#diagrams.entries().next().value!;
-            freeDiagram(old);
-            this.#diagrams.delete(oldKey);
+      const d = n.type === 'box' ? n.deferred : undefined;
+      if (d && n.children.length === 0) {
+        let entry = this.#deferred.get(d.key);
+        if (!entry) {
+          const layout = d.layout(measure);
+          // Not loaded yet: `#prepare` loads it and expands again.
+          if (layout === null) return;
+          if (this.#deferred.size >= 64) {
+            const [oldKey, old] = this.#deferred.entries().next().value!;
+            old.free?.(old.layout);
+            this.#deferred.delete(oldKey);
           }
-          this.#diagrams.set(key, layout);
+          entry = { layout, free: d.free?.bind(d) };
+          this.#deferred.set(d.key, entry);
         }
-        n.style = { size: { width: layout.width, height: layout.height }, ...n.style };
-        n.children = diagramNodes(layout, n.diagram);
+        const built = d.build(entry.layout);
+        n.style = { size: { width: built.width, height: built.height }, ...n.style };
+        n.children = built.children;
         return;
       }
       n.children.forEach(visit);

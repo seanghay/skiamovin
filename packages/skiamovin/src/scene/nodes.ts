@@ -13,7 +13,6 @@ import {
 } from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
-import type { DiagramSpec } from './diagram.ts';
 import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 import type { Grade } from './grading.ts';
 import type { SpringParams } from './physics.ts';
@@ -199,6 +198,24 @@ export interface Span {
   style: TextProps;
 }
 
+/** Measures text the way the renderer draws it. @internal */
+export type MeasureText = (content: (string | Span)[], props: TextProps) => { width: number; baseline: number };
+
+/**
+ * Content the renderer lays out once and reuses, after loading what it needs (diagrams, code). The box's children
+ * are filled in before layout. @internal
+ */
+export interface Deferred<L = any> {
+  /** Same key, same layout. */
+  key: string;
+  load(): Promise<void>;
+  /** Null until `load` has finished. */
+  layout(measure: MeasureText): L | null;
+  /** The box's size and children for this frame. */
+  build(layout: L): { width: number; height: number; children: SceneNode[] };
+  free?(layout: L): void;
+}
+
 export type Child = SceneNode | null | undefined | false | readonly Child[];
 
 interface Base {
@@ -207,7 +224,7 @@ interface Base {
 }
 
 export type SceneNode =
-  | ({ type: 'box'; diagram?: DiagramSpec } & Base)
+  | ({ type: 'box'; deferred?: Deferred } & Base)
   | ({ type: 'path'; path: Path } & PathStyle & Base)
   | ({ type: 'text'; content: (string | Span)[]; text: TextProps } & Base)
   | ({

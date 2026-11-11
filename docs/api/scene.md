@@ -841,6 +841,35 @@ from `render` every frame is cheap, and frames look positions up by time (`body`
 `contactsUntil(t, body?)` list when bodies started and stopped touching. Rapier runs in its deterministic mode, and
 a test checks the Node and WebAssembly builds give exactly the same positions.
 
+### `code`
+
+```ts
+code(after, {
+  from: before,
+  progress: interpolate(t, [1, 2], [0, 1]),
+  language: 'rust',
+  highlight: [[3, 5]],
+  lineNumbers: true,
+});
+```
+
+A code block highlighted by [Shiki](https://shiki.style) (MIT) with VS Code grammars and themes. With `from` and
+`progress`, it changes from one version of the code to the next, as in Motion Canvas: removed tokens fade out,
+kept tokens move to their new places, and added tokens fade in, while the block resizes.
+
+| Option | What it does |
+|---|---|
+| `language` | Any language Shiki knows. Default `'ts'` |
+| `theme` | Any Shiki theme. Default `'github-dark-default'` |
+| `fontSize`, `fontFamily`, `lineHeight`, `tabSize` | Default 28 pixels, the composition's first font, 1.5 and 2. Use a monospace font |
+| `from`, `progress` | The previous version, and how far along the change is (0 to 1) |
+| `highlight` | Lines to bring forward, as numbers or `[first, last]` ranges. The others are dimmed |
+| `lineNumbers` | Shows line numbers |
+
+Without a background or padding of its own, the block sits on a rounded card in the theme's background color.
+Shiki and each language load the first time they are used. It uses Shiki's JavaScript regex engine, so it needs no
+WebAssembly of its own and works the same on Node and the web.
+
 ### `diagram`
 
 ```ts
