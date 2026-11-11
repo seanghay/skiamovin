@@ -1183,6 +1183,11 @@ pub fn picture_approximate_op_count(h: u32) -> napi::Result<u32> {
     api::picture::picture_approximate_op_count(h).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "raster3d_triangles")]
+pub fn raster3d_triangles(width: u32, height: u32, positions: Float32Array, colors: Uint32Array, samples: u32) -> napi::Result<u32> {
+    api::raster3d::raster3d_triangles(width, height, &positions, &colors, samples).map(|v| v).map_err(err)
+}
+
 #[napi(js_name = "shader_linear_gradient")]
 pub fn shader_linear_gradient(x0: f64, y0: f64, x1: f64, y1: f64, colors: Float32Array, positions: Float32Array, tile: u32, flags: u32, m: Float32Array) -> napi::Result<u32> {
     api::shader::shader_linear_gradient(x0 as f32, y0 as f32, x1 as f32, y1 as f32, &colors, &positions, tile, flags, &m).map(|v| v).map_err(err)

@@ -38,6 +38,8 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Hand-drawn strokes | `stroke()`: variable-width, tapered strokes from points with pressure or along a path, drawn on over time |
 | Scattering | `scatter()` in an area, along a path or on a grid, seeded; `lookAt()` |
 | 3D space | `space3d()`: flat nodes with 3D placement and a perspective camera, sorted back to front, with backface hiding and camera angle presets; `transform: { matrix }` |
+| 3D meshes | `meshScene()` with boxes, spheres, tori and extruded shapes, lit with a highlight, back-face culled and sorted back to front, or drawn with a CPU depth buffer (`depth: true`) |
+| Ray-marched 3D | `sdfScene()`: spheres, boxes, tori, capsules and floors in generated SkSL, with soft shadows, ambient occlusion, fog and smooth blending |
 | Keyframes and actions | `curve()` with Bézier handles, `strips()` for actions placed on a timeline, `shapeKeys()` |
 | Modifiers and drawing | `modify()` with repeat, mirror, round corners, offset, noise and wave; `hold()` for animating on twos; `radial()` symmetry; `cleanShape()` |
 | Looks and titles | `softShadow()`, `looks` grade presets (golden hour, blue hour, polarizer, film and more), `titleCard()`, `lowerThird()`, `credits()` |

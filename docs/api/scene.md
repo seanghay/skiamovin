@@ -799,6 +799,41 @@ const stepped = hold(t, 24, 2); // animate "on twos"
 
 Title templates take `time` (default: the current time), `out`, `color`, `accent` and `fontFamily`, plus styles.
 
+### Ray-marched scenes: `sdfScene`
+
+```ts
+sdfScene({ width: 1920, height: 1080 }, { tilt: 18, pan: t * 15 }, [
+  { shape: { kind: 'floor' }, y: 110, color: '#e2e8f0' },
+  { shape: { kind: 'box', width: 130, height: 130, depth: 130, radius: 16 }, rotateY: t * 30, color: '#38bdf8' },
+  { shape: { kind: 'torus', radius: 70, tube: 26 }, x: 230, rotateX: 70, color: '#facc15' },
+], { background: '#0b1120', fog: 3000 });
+```
+
+A 3D scene drawn by a generated SkSL shader that ray-marches signed distance functions, with soft shadows, ambient
+occlusion and a highlight. Shapes: `sphere`, `box` (with rounded edges), `torus`, `capsule` and an endless `floor`.
+Each object has a position, rotations and `color`; the camera and units match `meshScene`. Options: `light`
+direction, `background`, `fog` distance and `blend` (shapes melt into each other over that many pixels). The shader
+depends only on the kinds of shapes, so animating positions doesn't recompile it. It is heavy for the CPU: render
+it on the GPU.
+
+### 3D meshes: `meshScene`
+
+```ts
+meshScene({ width: 1920, height: 1080 }, { tilt: 15 }, [
+  { mesh: meshes.torus(200, 70), color: '#facc15', rotateX: 60 + t * 30 },
+  { mesh: meshes.extrude(logoPath, 40), color: '#a78bfa', rotateY: t * 45 },
+]);
+```
+
+Lit 3D objects seen through the same camera as `space3d`. `meshes.box(w, h, d)`, `meshes.sphere(r, segments?)`,
+`meshes.torus(r, tube)` and `meshes.extrude(shape, depth)` build meshes; `extrude` takes a `Path` or SVG path
+data (holes follow the nonzero rule), so `textPaths` and logos become solid. Each object has `color`, position,
+rotations, `scale` and `shine` (highlight strength). The light comes from the upper left by default; set
+`light: { direction, ambient }`. Faces turned away are skipped and triangles are drawn back to front with Skia's
+`drawVertices`, so objects that cut through each other can show wrongly. With `depth: true`, a depth buffer in
+the Rust core draws them correctly instead, on the CPU with 3×3 samples per pixel (slower for large frames, and the
+same on every platform). Triangulation uses earcut (ISC).
+
 ### 3D space: `space3d`
 
 ```ts

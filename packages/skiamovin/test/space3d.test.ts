@@ -62,3 +62,18 @@ test('space3d: nearer items cover farther ones, and backfaces can hide', async (
   const turned = redWidth(await frame([{ node: card('#ff0000'), rotateY: 60 }]));
   assert.ok(Math.abs(turned - 50) <= 3, `${turned}`);
 });
+
+test('space3d: a positive tilt looks down from above', async () => {
+  await init();
+  // A floor card lying flat below the center: from above it shows its top; seen level it's edge-on and invisible.
+  const floor: Item3D[] = [{ node: card('#ff0000'), y: 40, rotateX: 90, backface: 'hidden' }];
+  const level = await frame(floor);
+  const above = await frame(floor, { tilt: 30 });
+  const red = (px: Uint8Array) => {
+    let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i]! > 127) n++;
+    return n;
+  };
+  assert.equal(red(level), 0);
+  assert.ok(red(above) > 500, `${red(above)}`);
+});

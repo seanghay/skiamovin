@@ -36,6 +36,7 @@ const BARE = {
   mediabunny: '/modules/mediabunny/dist/bundles/mediabunny.mjs',
   'pele/lazy': '/modules/pele/dist/esm/lazy.js',
   'perfect-freehand': '/modules/perfect-freehand/dist/esm/index.mjs',
+  earcut: '/modules/earcut/src/earcut.js',
 };
 const rewrite = (src) =>
   src.replace(/(\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"./][^'"]*)\2/g, (m, pre, q, spec) =>

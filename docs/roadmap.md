@@ -266,11 +266,11 @@ project inspired by it and is no longer maintained, so we won't depend on it. We
 1. **Shapes in 3D space** (done, as `space3d()`). Cards, images and text placed with full 3D transforms and a
    shared camera (Skia already supports this with `M44`), sorted back to front with a stable tie-break. Camera
    angle presets apply.
-2. **Simple meshes.** Boxes, spheres, extruded paths and extruded text, drawn with Skia's `drawVertices` and
+2. **Simple meshes** (done, as `meshScene()`). Boxes, spheres, extruded paths and extruded text, drawn with Skia's `drawVertices` and
    basic lighting. Textured meshes are subdivided so perspective looks right.
-3. **Shader scenes.** Ray-marched scenes in SkSL with a helper library for shapes, lights and materials, as in
+3. **Shader scenes** (done, as `sdfScene()`). Ray-marched scenes in SkSL with a helper library for shapes, lights and materials, as in
    the launch film's hero shot.
-4. **Depth testing on the CPU.** A software depth buffer in Rust, for scenes where sorting isn't enough.
+4. **Depth testing on the CPU** (done, as `meshScene(..., { depth: true })`). A software depth buffer in Rust, for scenes where sorting isn't enough.
 5. **A real 3D renderer** (glTF models, shadows), only if the steps above show demand. It would render with
    wgpu into a texture that Skia composites.
 

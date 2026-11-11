@@ -233,6 +233,7 @@ _skm_picture_serialize
 _skm_picture_from_data
 _skm_picture_cull_rect
 _skm_picture_approximate_op_count
+_skm_raster3d_triangles
 _skm_shader_linear_gradient
 _skm_shader_radial_gradient
 _skm_shader_two_point_conical_gradient

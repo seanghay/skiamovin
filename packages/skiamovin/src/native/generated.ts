@@ -238,6 +238,7 @@ export interface GeneratedBinding {
   picture_from_data(bytes: Uint8Array): number;
   picture_cull_rect(h: number): Float32Array;
   picture_approximate_op_count(h: number): number;
+  raster3d_triangles(width: number, height: number, positions: Float32Array, colors: Uint32Array, samples: number): number;
   shader_linear_gradient(x0: number, y0: number, x1: number, y1: number, colors: Float32Array, positions: Float32Array, tile: number, flags: number, m: Float32Array): number;
   shader_radial_gradient(cx: number, cy: number, radius: number, colors: Float32Array, positions: Float32Array, tile: number, flags: number, m: Float32Array): number;
   shader_two_point_conical_gradient(sx: number, sy: number, sr: number, ex: number, ey: number, er: number, colors: Float32Array, positions: Float32Array, tile: number, flags: number, m: Float32Array): number;
@@ -599,6 +600,7 @@ export const SIGNATURES: Record<string, string> = {
   picture_from_data: 'B:u',
   picture_cull_rect: 'u:F',
   picture_approximate_op_count: 'u:u',
+  raster3d_triangles: 'uuFUu:u',
   shader_linear_gradient: 'ffffFFuuF:u',
   shader_radial_gradient: 'fffFFuuF:u',
   shader_two_point_conical_gradient: 'ffffffFFuuF:u',

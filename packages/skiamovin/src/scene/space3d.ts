@@ -78,6 +78,47 @@ export interface Item3D {
 }
 
 /**
+ * World to camera space (`eye`, looking down +z, depth in pixels) and camera to screen (`project`, divide by the
+ * last row). @internal
+ */
+export function cameraTransform(viewport: { width: number; height: number }, camera: Camera3D): { eye: M; project: M } {
+  const fov = camera.fov ?? 40;
+  const focal = viewport.height / 2 / Math.tan((fov * Math.PI) / 360);
+  const distance = camera.distance ?? focal;
+  const [tx, ty, tz] = camera.target ?? [0, 0, 0];
+  // World to camera: move the target to the origin, turn the world against the camera, then push it back.
+  const view = mul(
+    translate(0, 0, -distance),
+    mul(
+      rotateZ(-(camera.roll ?? 0)),
+      mul(rotateX(-(camera.tilt ?? 0)), mul(rotateY(-(camera.pan ?? 0)), translate(-tx, -ty, -tz))),
+    ),
+  );
+  const flip: M = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1];
+  // Perspective onto the screen, centered, with depth = focal at true size.
+  const project: M = [focal, 0, viewport.width / 2, 0, 0, focal, viewport.height / 2, 0, 0, 0, 1, 0, 0, 0, 1, 0];
+  return { eye: mul(flip, view), project };
+}
+
+/** Model matrix: scale, then rotate X, Y, Z, then move. @internal */
+export function placement(p: {
+  x?: number;
+  y?: number;
+  z?: number;
+  rotateX?: number;
+  rotateY?: number;
+  rotateZ?: number;
+  scale?: number;
+}): M {
+  return mul(
+    translate(p.x ?? 0, p.y ?? 0, p.z ?? 0),
+    mul(rotateZ(p.rotateZ ?? 0), mul(rotateY(p.rotateY ?? 0), mul(rotateX(p.rotateX ?? 0), scale(p.scale ?? 1)))),
+  );
+}
+
+export { mul as multiply44 };
+
+/**
  * A 3D space seen through a perspective camera. Each item is a node (sized with a fixed `size`) placed by its center
  * and rotations. Items are drawn back to front, keeping their order when they're at the same depth.
  *
@@ -94,21 +135,7 @@ export function space3d(
   style: NodeStyle = {},
 ): SceneNode {
   const { width, height } = viewport;
-  const fov = camera.fov ?? 40;
-  const focal = height / 2 / Math.tan((fov * Math.PI) / 360);
-  const distance = camera.distance ?? focal;
-  const [tx, ty, tz] = camera.target ?? [0, 0, 0];
-  // World to camera: move the target to the origin, turn the world against the camera, then push it back.
-  const view = mul(
-    translate(0, 0, -distance),
-    mul(
-      rotateZ(-(camera.roll ?? 0)),
-      mul(rotateX(camera.tilt ?? 0), mul(rotateY(-(camera.pan ?? 0)), translate(-tx, -ty, -tz))),
-    ),
-  );
-  // Perspective onto the screen, centered, with z = -focal at true size.
-  const project: M = [focal, 0, width / 2, 0, 0, focal, height / 2, 0, 0, 0, 1, 0, 0, 0, 1, 0];
-  const flip: M = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1];
+  const { eye: view, project } = cameraTransform(viewport, camera);
   const placed = items.map((it, index) => {
     const size = it.node.style.size;
     const w = typeof size === 'object' && typeof size.width === 'number' ? size.width : 0;
@@ -123,7 +150,7 @@ export function space3d(
         ),
       ),
     );
-    const eye = mul(flip, mul(view, model));
+    const eye = mul(view, model);
     const center = apply(eye, [w / 2, h / 2, 0]);
     const normal = apply(eye, [w / 2, h / 2, 1]);
     // Camera space after the flip looks down +z; the node faces the camera when its normal points back at it.

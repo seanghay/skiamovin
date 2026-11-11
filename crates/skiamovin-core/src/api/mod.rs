@@ -15,6 +15,7 @@ pub mod path;
 pub mod path_motion;
 pub mod physics;
 pub mod picture;
+pub mod raster3d;
 pub mod shader;
 pub mod surface;
 pub mod svg;

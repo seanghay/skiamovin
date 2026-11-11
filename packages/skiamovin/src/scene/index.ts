@@ -64,6 +64,8 @@ export { credits, looks, lowerThird, softShadow, titleCard } from './looks.ts';
 export { deliveryPresets, LoudnessMeter, loudnessGain } from './loudness.ts';
 export type { MathOptions } from './math.ts';
 export { math } from './math.ts';
+export type { Light, Mesh, MeshObject } from './mesh.ts';
+export { meshes, meshScene } from './mesh.ts';
 export type { PathModifier } from './modifiers.ts';
 export { cleanShape, hold, modifiers, modify, radial } from './modifiers.ts';
 export type {
@@ -145,6 +147,8 @@ export type { Midi, MidiNote, Onset, Rhythm } from './rhythm.ts';
 export { beatAt, detectRhythm, parseMidi, pulse } from './rhythm.ts';
 export type { ScatterOptions, ScatterPoint } from './scatter.ts';
 export { lookAt, scatter } from './scatter.ts';
+export type { SdfObject, SdfOptions, SdfShape } from './sdf.ts';
+export { sdfScene } from './sdf.ts';
 export type { BodyDef, BodyShape, BodyState, Contact, JointDef, WorldDef } from './simulation.ts';
 export { PhysicsWorld, physics } from './simulation.ts';
 export type { Camera3D, Item3D } from './space3d.ts';

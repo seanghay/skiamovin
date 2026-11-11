@@ -1844,6 +1844,14 @@ pub extern "C" fn skm_picture_approximate_op_count(h: u32) -> u32 {
 }
 
 #[no_mangle]
+pub extern "C" fn skm_raster3d_triangles(width: u32, height: u32, positions_ptr: *const f32, positions_len: usize, colors_ptr: *const u32, colors_len: usize, samples: u32) -> u32 {
+    match api::raster3d::raster3d_triangles(width, height, unsafe { crate::rt::slice_from(positions_ptr, positions_len) }, unsafe { crate::rt::slice_from(colors_ptr, colors_len) }, samples) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_shader_linear_gradient(x0: f32, y0: f32, x1: f32, y1: f32, colors_ptr: *const f32, colors_len: usize, positions_ptr: *const f32, positions_len: usize, tile: u32, flags: u32, m_ptr: *const f32, m_len: usize) -> u32 {
     match api::shader::shader_linear_gradient(x0, y0, x1, y1, unsafe { crate::rt::slice_from(colors_ptr, colors_len) }, unsafe { crate::rt::slice_from(positions_ptr, positions_len) }, tile, flags, unsafe { crate::rt::slice_from(m_ptr, m_len) }) {
         Ok(v) => v,
