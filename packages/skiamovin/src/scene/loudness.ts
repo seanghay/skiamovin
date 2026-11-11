@@ -120,22 +120,46 @@ export function loudnessGain(measured: number, peak: number, target: number, pea
 export const deliveryPresets = Object.freeze({
   /** 1080p for YouTube, normalized to −14 LUFS. */
   youtube: Object.freeze({
-    video: Object.freeze({ width: 1920, height: 1080, codec: 'avc' as const, bitrate: 12_000_000 }),
-    audio: Object.freeze({ codec: 'aac' as const, bitrate: 384_000, sampleRate: 48000, loudness: -14 }),
+    video: Object.freeze({
+      width: 1920,
+      height: 1080,
+      codec: 'avc' as const,
+      bitrate: 12_000_000,
+      fit: 'contain' as const,
+    }),
+    audio: Object.freeze({ codec: 'aac' as const, bitrate: 320_000, sampleRate: 48000, loudness: -14 }),
   }),
   /** Vertical 1080×1920 for Instagram Reels, normalized to −14 LUFS. */
   instagram: Object.freeze({
-    video: Object.freeze({ width: 1080, height: 1920, codec: 'avc' as const, bitrate: 8_000_000 }),
+    video: Object.freeze({
+      width: 1080,
+      height: 1920,
+      codec: 'avc' as const,
+      bitrate: 8_000_000,
+      fit: 'contain' as const,
+    }),
     audio: Object.freeze({ codec: 'aac' as const, bitrate: 256_000, sampleRate: 48000, loudness: -14 }),
   }),
   /** Vertical 1080×1920 for TikTok, normalized to −14 LUFS. */
   tiktok: Object.freeze({
-    video: Object.freeze({ width: 1080, height: 1920, codec: 'avc' as const, bitrate: 8_000_000 }),
+    video: Object.freeze({
+      width: 1080,
+      height: 1920,
+      codec: 'avc' as const,
+      bitrate: 8_000_000,
+      fit: 'contain' as const,
+    }),
     audio: Object.freeze({ codec: 'aac' as const, bitrate: 256_000, sampleRate: 48000, loudness: -14 }),
   }),
   /** 1080p for broadcast, normalized to −23 LUFS (EBU R128). */
   broadcast: Object.freeze({
-    video: Object.freeze({ width: 1920, height: 1080, codec: 'avc' as const, bitrate: 20_000_000 }),
+    video: Object.freeze({
+      width: 1920,
+      height: 1080,
+      codec: 'avc' as const,
+      bitrate: 20_000_000,
+      fit: 'contain' as const,
+    }),
     audio: Object.freeze({ codec: 'aac' as const, bitrate: 320_000, sampleRate: 48000, loudness: -23 }),
   }),
 });

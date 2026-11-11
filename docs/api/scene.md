@@ -1226,7 +1226,7 @@ interface RenderOptions<Props> {
 `deliveryPresets` holds settings for common destinations, to spread into the options:
 `Render.init({ composition, output, ...deliveryPresets.youtube })`. `youtube` and `broadcast` are 1920×1080,
 `instagram` and `tiktok` are 1080×1920; all use H.264 and AAC at 48 kHz, normalized to −14 LUFS (−23 for
-`broadcast`). `LoudnessMeter` measures integrated loudness and sample peak of audio you feed it.
+`broadcast`), and fit the composition inside the frame without stretching it. `LoudnessMeter` measures integrated loudness and sample peak of audio you feed it.
 
 ### Instance members
 
@@ -1400,9 +1400,14 @@ wraps an existing `Worker`, and `CompositionWorker.forModule()` starts the built
 ## CLI
 
 ```sh
-npx skiamovin render src/promo.ts out.mp4 --props '{"title":"Hi"}' --codec hevc --concurrency auto
+npx skiamovin render src/promo.ts out.mp4 --props '{"title":"Hi"}' --preset youtube --concurrency auto
 npx skiamovin still src/promo.ts thumb.png --timestamp 1.5
-npx skiamovin info                      # GPU and codec support on this machine
+npx skiamovin inspect src/promo.ts --timestamp 2   # settings and the node tree at 2 s, as JSON
+npx skiamovin info                                  # version, GPU and codecs, as JSON
 ```
 
-The module must export a `Composition` as `default`, or name one with `--export`.
+The module must export a `Composition` as `default`, or name one with `--export`. `render` picks the container
+from the file extension (`.mp4`, `.mov`, `.webm`, `.mkv`) and takes `--codec`, `--preset` (one of
+`deliveryPresets`), `--loudness` in LUFS, and `--start` and `--end` in seconds. `still` writes PNG, JPEG or WebP.
+`inspect` is meant for tools and AI agents: it prints the size, frame rate, duration, events and fonts, and each
+node's type, plain-data style and text, without rendering.

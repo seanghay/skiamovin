@@ -25,6 +25,9 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "skiamovin": "./dist/cli.js"
+  },
   "imports": {
     "#loader": {
       "types": "./dist/native/loader-node.d.ts",
