@@ -1,16 +1,16 @@
 // The Skiamovin launch film: about a minute, cut to a 120 BPM track, built only from what the library does.
 // Every shot is live: the code, the physics, the math, the 3D, the footage and the type are rendered, not pasted.
 import { FilePathSource } from 'mediabunny';
-import type { Color } from 'skiamovin';
+import { type Color, textlayout } from 'skiamovin';
 import {
   adjust,
   audio,
-  backgrounds,
   box,
   type Child,
   Composition,
   type Cue,
   captions,
+  clipTo,
   code,
   diagram,
   Easing,
@@ -22,9 +22,10 @@ import {
   linearGradient,
   looks,
   math,
+  meshes,
+  meshScene,
   physics,
   type SceneNode,
-  sdfScene,
   space3d,
   spring,
   springs,
@@ -50,6 +51,26 @@ const music = input('arpent.mp3');
 const footage = input('tears-of-steel.mp4');
 const SUNSET = new ImageAsset(new FilePathSource(asset('the_sky_is_on_fire.jpg')));
 const VENICE = new ImageAsset(new FilePathSource(asset('venice_sunset.jpg')));
+const MEADOW = new ImageAsset(new FilePathSource(asset('lilienstein.jpg')));
+const PHOTOS = [SUNSET, VENICE, MEADOW];
+
+async function wordmarkMesh() {
+  const fonts = new textlayout.FontCollection();
+  const provider = new textlayout.TypefaceFontProvider();
+  provider.registerTypeface(await FONTS[0]!.getTypeface(), 'Inter');
+  fonts.setAssetFontManager(provider);
+  const style = new textlayout.TextStyle()
+    .setFontFamilies(['Inter'])
+    .setFontSize(260)
+    .setLetterSpacing(-10)
+    .setFontArguments({ variationDesignPosition: { wght: 800 } });
+  const builder = new textlayout.ParagraphBuilder(new textlayout.ParagraphStyle().setTextStyle(style), fonts);
+  builder.addText('Skiamovin');
+  const paragraph = builder.build();
+  paragraph.layout(1e6);
+  return meshes.extrude(paragraph.getPath(0), 70, 2);
+}
+const WORDMARK = await wordmarkMesh();
 
 const W = 1920,
   H = 1080,
@@ -60,15 +81,13 @@ const MUSIC_START = 21.046;
 const BAR = 2;
 export const DURATION = 61;
 
+// Monochrome: black, white and grays. Color comes only from real content: photographs, footage and code.
 const C = {
   bg: '#000000',
   text: '#f5f5f7',
   muted: '#86868b',
-  violet: '#a78bfa',
-  cyan: '#22d3ee',
-  pink: '#f472b6',
-  glass: 'rgba(255,255,255,0.06)',
-  edge: 'rgba(255,255,255,0.14)',
+  soft: '#d2d2d7',
+  edge: 'rgba(255,255,255,0.12)',
 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -106,14 +125,11 @@ function headline(
 function glass(children: Child[], style: Parameters<typeof box>[0] = {}) {
   return box(
     {
-      background: 'rgba(22,22,28,0.72)',
+      background: 'rgba(20,20,22,0.86)',
       border: 1.5,
       borderColor: C.edge,
       borderRadius: 28,
-      shadow: [
-        { color: 'rgba(0,0,0,0.6)', offset: [0, 40], blur: 80 },
-        { color: 'rgba(167,139,250,0.10)', blur: 60 },
-      ],
+      shadow: { color: 'rgba(0,0,0,0.7)', offset: [0, 40], blur: 90 },
       overflow: 'hidden',
       ...style,
     },
@@ -173,7 +189,7 @@ function coldOpen(t: number): Child {
       ...abs(W / 2 - 800, H / 2 - 450),
       size: { width: 1600, height: 900 },
       borderRadius: 800,
-      background: 'rgba(124,58,237,0.16)',
+      background: 'rgba(255,255,255,0.05)',
       blur: 160,
       opacity: out,
     }),
@@ -209,19 +225,25 @@ function coldOpen(t: number): Child {
       const lane = (i * 7) % 6,
         row = Math.floor(i / 6);
       const z = -3600 + ((local * 1600 + i * 190) % 4000);
-      const hue = [C.violet, C.cyan, C.pink, '#facc15', '#34d399', '#60a5fa'][(i * 5) % 6]!;
+      const photo = PHOTOS[(i * 5) % PHOTOS.length]!;
       return {
         node: box(
           {
             size: { width: 320, height: 180 },
-            borderRadius: 14,
-            background: linearGradient(120 + i * 17, [hue, '#0b0b12']),
+            borderRadius: 10,
+            overflow: 'hidden',
             border: 1,
-            borderColor: 'rgba(255,255,255,0.18)',
-            padding: 16,
+            borderColor: 'rgba(255,255,255,0.16)',
+            padding: 14,
             justifyContent: 'flex-end',
           },
           [
+            image(photo, {
+              ...abs(0, 0),
+              size: { width: 320, height: 180 },
+              fit: 'cover',
+              objectPosition: [`${(i * 37) % 100}%`, '50%'],
+            }),
             text(String(i * 7 + 1).padStart(4, '0'), {
               fontFamily: MONO,
               fontSize: 22,
@@ -253,84 +275,86 @@ function coldOpen(t: number): Child {
 }
 
 function hero(t: number): Child {
-  // 11 to 17: the name slams in on the hit, over an aurora; then the tagline.
-  const flash = Math.max(0, 1 - t / 0.25);
-  const glow = fade(t, 0, 0.6);
+  // 11 to 17: the name lands on the hit, on black. A band of light sweeps across the letters like a highlight on
+  // metal, a hairline draws out beneath, then the tagline.
+  const flash = Math.max(0, 1 - t / 0.18);
   const out = 1 - fade(t, 5.5, 0.5);
-  return box(full, [
-    box({ ...full, opacity: 0.85 * glow * out }, [
-      backgrounds.aurora({ base: '#000000', colors: ['#7c3aed', '#06b6d4'], speed: 0.9 }),
-    ]),
+  const name = () =>
+    text('Skiamovin', {
+      fontFamily: SANS,
+      fontSize: 230,
+      fontWeight: 800,
+      letterSpacing: -9,
+      color: '#e8e8ed',
+      split: {
+        by: 'chars',
+        style: (u) => {
+          const k = spring({ timestamp: t - u.index * 0.03, from: 0, to: 1, response: 0.4, bounce: 0.12 });
+          return { opacity: clamp01(k * 2), scale: 1.35 - 0.35 * k, y: (1 - k) * -24 };
+        },
+      },
+    });
+  const sweep = interpolate(t, [0.6, 2.2], [-0.4, 1.4]);
+  return box({ ...full, opacity: out }, [
     box(
       {
         ...full,
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        opacity: out,
-        transform: { scale: 1 + 0.04 * ramp(t, 0, 6) },
+        gap: 26,
+        transform: { scale: 1 + 0.03 * ramp(t, 0, 6) },
       },
       [
-        text('Skiamovin', {
-          fontFamily: SANS,
-          fontSize: 230,
-          fontWeight: 800,
-          letterSpacing: -9,
-          color: C.text,
-          textShadow: { color: 'rgba(167,139,250,0.55)', blur: 60 },
-          split: {
-            by: 'chars',
-            style: (u) => {
-              const k = spring({ timestamp: t - u.index * 0.035, from: 0, to: 1, response: 0.42, bounce: 0.18 });
-              return { opacity: clamp01(k * 2), scale: 1.8 - 0.8 * k, y: (1 - k) * -40 };
-            },
-          },
-        }),
-        headline('Video, written in code.', t, 2.0, {
-          size: 64,
+        clipTo(
+          name(),
+          box({
+            ...abs(0, 0),
+            size: { width: '100%', height: '100%' },
+            background: linearGradient(100, [
+              ['rgba(255,255,255,0)', clamp01(sweep - 0.18)],
+              ['rgba(255,255,255,0.95)', clamp01(sweep)],
+              ['rgba(255,255,255,0)', clamp01(sweep + 0.18)],
+            ]),
+          }),
+        ),
+        box({ size: { width: 760 * ramp(t, 0.8, 1.8), height: 1 }, background: 'rgba(255,255,255,0.35)' }),
+        headline('Video, written in code.', t, 1.6, {
+          size: 60,
           family: SERIF,
           weight: 400,
           spacing: 0,
-          color: '#d4d4d8',
+          color: C.soft,
         }),
       ],
     ),
-    flash > 0 ? box({ ...full, background: `rgba(255,255,255,${0.9 * flash})` }) : null,
+    flash > 0 ? box({ ...full, background: `rgba(255,255,255,${0.35 * flash})` }) : null,
   ]);
 }
 
 const PRODUCT = [
-  { title: 'Hello', accent: '#a78bfa', bars: [0.4, 0.7, 0.55] },
-  { title: 'Hello, world', accent: '#22d3ee', bars: [0.8, 0.5, 0.9] },
-  { title: 'Ship it.', accent: '#f472b6', bars: [0.6, 0.95, 0.75] },
-];
-const productCode = (i: number) => `box({ class: 'flex flex-col gap-6 p-12' }, [
-  text('${PRODUCT[i]!.title}', { fontSize: 96 }),
-  bars([${PRODUCT[i]!.bars.join(', ')}], '${PRODUCT[i]!.accent}'),
+  { title: 'Golden hour', look: 'goldenHour' },
+  { title: 'Blue hour', look: 'blueHour' },
+  { title: 'Film', look: 'film' },
+] as const;
+const productCode = (i: number) => `box({ class: 'relative rounded-3xl overflow-hidden' }, [
+  image(sunset, { grade: looks.${PRODUCT[i]!.look}() }),
+  text('${PRODUCT[i]!.title}', { fontSize: 72 }),
 ])`;
 
-function preview(t: number, i: number, k: number) {
+function preview(i: number, k: number) {
   const p = PRODUCT[i]!;
-  return box(
-    { size: { width: 760, height: 460 }, padding: 48, flexDirection: 'column', gap: 34, background: '#0c0c12' },
-    [
-      text(p.title, { fontFamily: SANS, fontSize: 84, fontWeight: 800, letterSpacing: -3, color: C.text, opacity: k }),
-      box(
-        { flexDirection: 'row', alignItems: 'flex-end', gap: 22, size: { height: 200 } },
-        p.bars.map((b, j) =>
-          box({
-            size: {
-              width: 150,
-              height: 200 * b * spring({ timestamp: t - j * 0.08, from: 0.2, to: 1, ...springs.snappy }),
-            },
-            borderRadius: 16,
-            background: linearGradient(90, [p.accent, '#1e1b4b']),
-          }),
-        ),
-      ),
-    ],
-  );
+  return box({ size: { width: 768, height: 470 }, borderRadius: 18, overflow: 'hidden' }, [
+    image(SUNSET, { ...abs(0, 0), size: { width: 768, height: 470 }, fit: 'cover', grade: looks[p.look]() }),
+    box({
+      ...abs(0, 250),
+      size: { width: 768, height: 220 },
+      background: linearGradient(180, ['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']),
+    }),
+    box({ ...abs(36, 360), opacity: k }, [
+      text(p.title, { fontFamily: SANS, fontSize: 72, fontWeight: 800, letterSpacing: -2.5, color: '#ffffff' }),
+    ]),
+  ]);
 }
 
 function product(t: number): Child {
@@ -351,7 +375,7 @@ function product(t: number): Child {
     }),
     { width: 820, height: 420 },
   );
-  const view = window_('Preview · 60 fps', preview(local, i, fade(local, 0.3)), { width: 820, height: 560 });
+  const view = window_('Preview · 60 fps', preview(i, fade(local, 0.3)), { width: 820, height: 560 });
   const k = spring({ timestamp: t, from: 0, to: 1, response: 0.8, bounce: 0 });
   return box(full, [
     space3d(
@@ -365,7 +389,7 @@ function product(t: number): Child {
     ),
     box({ ...abs(0, 70), size: { width: W }, flexDirection: 'row', justifyContent: 'center', gap: 22 }, [
       headline('Write TypeScript.', t, 0.3, { size: 60, weight: 700 }),
-      headline('Watch it render.', t, 1.4, { size: 60, family: SERIF, weight: 400, spacing: 0, color: '#c4b5fd' }),
+      headline('Watch it render.', t, 1.4, { size: 60, family: SERIF, weight: 400, spacing: 0, color: C.soft }),
     ]),
   ]);
 }
@@ -397,9 +421,9 @@ function featureFrame(label: string, sub: string, t: number, demo: Child): Child
 
 function layoutDemo(t: number): SceneNode {
   const cards = [
-    ['Revenue', '$84.2k', C.violet],
-    ['Users', '12,804', C.cyan],
-    ['Uptime', '99.98%', '#34d399'],
+    ['Revenue', '$84.2k', '#f5f5f7'],
+    ['Users', '12,804', '#a1a1a6'],
+    ['Uptime', '99.98%', '#6e6e73'],
   ] as const;
   return box({ ...full, background: '#07070b', justifyContent: 'center', alignItems: 'center' }, [
     box({ flexDirection: 'row', gap: 28, transform: { translateY: -90 } }, [
@@ -453,7 +477,8 @@ function physicsDemo(t: number): SceneNode {
           ...abs(b.x - 75, b.y - 85),
           size: { width: 150, height: 170 },
           borderRadius: 22,
-          background: [C.violet, C.cyan, C.pink, '#facc15', '#34d399', '#60a5fa', '#fb923c'][i]!,
+          background: '#f5f5f7',
+          shadow: { color: 'rgba(0,0,0,0.6)', offset: [0, 18], blur: 30 },
           justifyContent: 'center',
           alignItems: 'center',
           transform: { rotate: b.angle },
@@ -520,23 +545,66 @@ function colorDemo(t: number): SceneNode {
   ]);
 }
 
-function threeDDemo(t: number): SceneNode {
-  return sdfScene(
-    VIEW,
-    { tilt: 14, pan: -20 + t * 14, distance: 1500, target: [0, 20, 0] },
-    [
-      { shape: { kind: 'floor' }, y: 170, color: '#26262f' },
-      { shape: { kind: 'sphere', radius: 120 }, x: -360, y: 50, color: '#a78bfa' },
-      {
-        shape: { kind: 'box', width: 210, height: 210, depth: 210, radius: 28 },
-        y: 65,
-        rotateY: 30 + t * 40,
-        color: '#22d3ee',
-      },
-      { shape: { kind: 'torus', radius: 120, tube: 44 }, x: 370, y: 20, rotateX: 70 + t * 30, color: '#f472b6' },
-    ],
-    { background: '#07070b', fog: 5200, ...full },
+/**
+ * Brushed metal: a softbox gradient (bright above, dark below) and a moving specular band, laid over a mesh and
+ * clipped to its shape, so flat faces read as polished metal rather than gray plastic.
+ */
+function metal(object: SceneNode, sweep: number): SceneNode {
+  return clipTo(
+    object,
+    box({
+      ...abs(0, 0),
+      size: VIEW,
+      background: linearGradient(180, [
+        ['rgba(255,255,255,0.32)', 0.3],
+        ['rgba(255,255,255,0)', 0.48],
+        ['rgba(0,0,0,0)', 0.52],
+        ['rgba(0,0,0,0.55)', 0.66],
+      ]),
+    }),
+    box({
+      ...abs(0, 0),
+      size: VIEW,
+      background: linearGradient(110, [
+        ['rgba(255,255,255,0)', clamp01(sweep - 0.12)],
+        ['rgba(255,255,255,0.55)', clamp01(sweep)],
+        ['rgba(255,255,255,0)', clamp01(sweep + 0.12)],
+      ]),
+    }),
   );
+}
+
+function threeDDemo(t: number): SceneNode {
+  // The wordmark as a solid, brushed-metal object turning under one studio light, with a faint floor reflection.
+  const object = (flip: boolean) =>
+    meshScene(
+      VIEW,
+      { tilt: 6, fov: 34 },
+      [
+        {
+          mesh: WORDMARK,
+          color: '#c9c9ce',
+          shine: 0.85,
+          rotateY: -20 + t * 11,
+          rotateX: 6,
+          scale: 0.86,
+          y: flip ? 0 : -50,
+        },
+      ],
+      { light: { direction: [-0.35, -0.65, 0.68], ambient: 0.16 } },
+    );
+  return box({ ...full, background: '#050505' }, [
+    box({ ...abs(0, 0), size: VIEW }, [metal(object(false), interpolate(t, [0.2, 1.8], [-0.2, 1.2]))]),
+    // The reflection: the same object, flipped below and faded.
+    box({ ...abs(0, 140), size: VIEW, transformOrigin: ['50%', '50%'], transform: { scale: [1, -1] }, opacity: 0.12 }, [
+      object(true),
+    ]),
+    box({
+      ...abs(0, 560),
+      size: { width: W, height: 520 },
+      background: linearGradient(180, ['rgba(5,5,5,0.2)', '#050505']),
+    }),
+  ]);
 }
 
 function diagramDemo(t: number): SceneNode {
@@ -589,7 +657,7 @@ const FEATURES: { label: string; sub: string; demo: (t: number) => SceneNode }[]
   { label: 'Math.', sub: 'LaTeX, typeset in Rust and written on.', demo: mathDemo },
   { label: 'Film.', sub: 'Real footage, graded and captioned.', demo: filmDemo },
   { label: 'Color.', sub: 'Grades, LUTs and looks, live.', demo: colorDemo },
-  { label: '3D.', sub: 'Ray-marched scenes and lit meshes.', demo: threeDDemo },
+  { label: '3D.', sub: 'Lit meshes, extruded from any shape or font.', demo: threeDDemo },
   { label: 'Diagrams.', sub: 'Mermaid, drawn on stroke by stroke.', demo: diagramDemo },
   { label: 'Code.', sub: 'Highlighted, and it animates between versions.', demo: codeDemo },
   { label: 'Every language.', sub: 'Shaped right, in every script.', demo: languagesDemo },
@@ -686,7 +754,7 @@ function agents(t: number): Child {
       { ...abs(140, 0), size: { width: 760, height: H }, flexDirection: 'column', justifyContent: 'center', gap: 18 },
       [
         headline('Built for humans.', t, 0.2, { size: 84, weight: 800 }),
-        headline('And for AI agents.', t, 1.0, { size: 84, family: SERIF, weight: 400, spacing: 0, color: '#c4b5fd' }),
+        headline('And for AI agents.', t, 1.0, { size: 84, family: SERIF, weight: 400, spacing: 0, color: C.soft }),
         text(
           'Plain TypeScript, JSON inspection, contact sheets and a command line, so agents can write, check and render videos on their own.',
           {
@@ -706,43 +774,41 @@ function agents(t: number): Child {
 }
 
 function lockup(t: number): Child {
-  // 53 to 61: name, install line, and credits.
-  const k = spring({ timestamp: t, from: 0, to: 1, response: 0.7, bounce: 0 });
-  return box(full, [
-    box({ ...full, opacity: 0.5 * fade(t, 0, 1.2) }, [
-      image(VENICE, { ...full, fit: 'cover', blur: 40, grade: looks.blueHour() }),
+  // 53 to 61: the metal wordmark turns to face the camera and settles; then the install line and credits.
+  const turn = spring({ timestamp: t, from: 1, to: 0, response: 1.6, bounce: 0 });
+  const k = fade(t, 0, 0.8);
+  return box({ ...full, background: '#000' }, [
+    box({ ...full, opacity: k, transform: { translateY: -110 } }, [
+      metal(
+        meshScene(
+          VIEW,
+          { tilt: 4, fov: 30 },
+          [{ mesh: WORDMARK, color: '#d1d1d6', shine: 0.9, rotateY: -38 * turn, rotateX: 4 * turn, scale: 0.95 }],
+          { light: { direction: [-0.3 + 0.5 * (1 - turn), -0.7, 0.65], ambient: 0.2 } },
+        ),
+        interpolate(t, [1.2, 3.0], [-0.2, 1.2]),
+      ),
     ]),
-    box({ ...full, background: 'rgba(0,0,0,0.55)' }),
-    box({ ...full, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 26 }, [
-      text('Skiamovin', {
-        fontFamily: SANS,
-        fontSize: 170,
-        fontWeight: 800,
-        letterSpacing: -6,
-        color: C.text,
-        opacity: clamp01(k * 1.5),
-        transform: { scale: 0.92 + 0.08 * k },
-        textShadow: { color: 'rgba(167,139,250,0.45)', blur: 50 },
-      }),
+    box({ ...abs(0, 640), size: { width: W }, flexDirection: 'column', alignItems: 'center', gap: 22 }, [
       box(
         {
-          padding: [18, 30],
+          padding: [16, 28],
           borderRadius: 40,
-          background: 'rgba(255,255,255,0.08)',
-          border: 1.5,
-          borderColor: 'rgba(255,255,255,0.18)',
-          opacity: fade(t, 0.8),
-          transform: { translateY: rise(t, 0.8, 20) },
+          background: 'rgba(255,255,255,0.06)',
+          border: 1,
+          borderColor: 'rgba(255,255,255,0.16)',
+          opacity: fade(t, 1.6),
+          transform: { translateY: rise(t, 1.6, 16) },
         },
-        [text('npm install skiamovin', { fontFamily: MONO, fontSize: 34, color: C.text })],
+        [text('npm install skiamovin', { fontFamily: MONO, fontSize: 32, color: C.text })],
       ),
-      text('Open source. MIT licensed.', { fontFamily: SERIF, fontSize: 40, color: '#d4d4d8', opacity: fade(t, 1.6) }),
-      text('github.com/seanghay/skiamovin', { fontFamily: MONO, fontSize: 26, color: C.muted, opacity: fade(t, 2.2) }),
+      text('Open source. MIT licensed.', { fontFamily: SERIF, fontSize: 40, color: C.soft, opacity: fade(t, 2.3) }),
+      text('github.com/seanghay/skiamovin', { fontFamily: MONO, fontSize: 24, color: C.muted, opacity: fade(t, 2.8) }),
     ]),
-    box({ ...abs(0, H - 70), size: { width: W }, justifyContent: 'center', opacity: fade(t, 3, 0.8) }, [
+    box({ ...abs(0, H - 64), size: { width: W }, justifyContent: 'center', opacity: fade(t, 3.4, 0.8) }, [
       text(
         'Music: “Arpent” by Kevin MacLeod (CC0) · Footage: “Tears of Steel” © Blender Foundation, mango.blender.org (CC BY 3.0) · Photos: Poly Haven (CC0)',
-        { fontFamily: SANS, fontSize: 17, color: '#52525b' },
+        { fontFamily: SANS, fontSize: 16, color: '#48484a' },
       ),
     ]),
     box({ ...full, background: `rgba(0,0,0,${fade(t, DURATION - 53 - 1.2, 1.2)})` }),
