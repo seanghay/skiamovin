@@ -93,3 +93,16 @@ test('space3d: depth of field blurs what is out of focus', async () => {
   assert.ok((await sharpness(412)) <= 2, 'in focus');
   assert.ok((await sharpness(150)) > 10, 'out of focus');
 });
+
+test('space3d: nodes drawn through a layer (opacity, blur, grades) still show', async () => {
+  await init();
+  const red = (px: Uint8Array) => {
+    let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i]! > 60) n++;
+    return n;
+  };
+  const faded = box({ size: { width: 100, height: 60 }, background: '#ff0000', opacity: 0.5 });
+  const blurred = box({ size: { width: 100, height: 60 }, background: '#ff0000', blur: 3 });
+  assert.ok(red(await frame([{ node: faded }])) > 5000, 'opacity');
+  assert.ok(red(await frame([{ node: blurred, rotateY: 30 }])) > 3000, 'blur, turned');
+});

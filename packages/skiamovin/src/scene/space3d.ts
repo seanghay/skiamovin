@@ -102,7 +102,10 @@ export function cameraTransform(viewport: { width: number; height: number }, cam
   );
   const flip: M = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1];
   // Perspective onto the screen, centered, with depth = focal at true size.
-  const project: M = [focal, 0, viewport.width / 2, 0, 0, focal, viewport.height / 2, 0, 0, 0, 1, 0, 0, 0, 1, 0];
+  // The third row only has to keep the matrix invertible (it doesn't affect the 2D result): if it equalled the last
+  // row, Skia couldn't map layers back through the matrix, and anything drawn in a layer (opacity, blur, grades,
+  // effects) would vanish.
+  const project: M = [focal, 0, viewport.width / 2, 0, 0, focal, viewport.height / 2, 0, 0, 0, 0, 1, 0, 0, 1, 0];
   return { eye: mul(flip, view), project };
 }
 
