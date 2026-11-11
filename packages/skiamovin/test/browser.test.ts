@@ -3,11 +3,11 @@
 import assert from 'node:assert/strict';
 import { existsSync, writeFileSync } from 'node:fs';
 import { after, before, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { type Browser, chromium, type Page } from 'playwright-core';
 import { startServer } from './browser/server.mjs';
+import { OUT, prepareTestMedia } from './fixtures/media.ts';
 
-const OUT = fileURLToPath(new URL('../../../test-output/', import.meta.url));
+prepareTestMedia();
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 let server: any, browser: Browser, page: Page;

@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { ALL_FORMATS, FilePathSource, FilePathTarget, Input, Mp4OutputFormat, Output } from 'mediabunny';
 import { ImageInfo } from 'skiamovin';
 import { ImageSink } from 'skiamovin/media';
 import { CompositionModule, Render } from 'skiamovin/scene';
+import { OUT, prepareTestMedia } from './fixtures/media.ts';
 
-const OUT = fileURLToPath(new URL('../../../test-output/', import.meta.url));
+prepareTestMedia();
 const mod = new CompositionModule(new URL('./fixtures/ramp.ts', import.meta.url));
 
 async function renderWith(concurrency: number, file: string): Promise<number> {

@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import {
   ALL_FORMATS,
   AudioSample,
@@ -26,9 +24,9 @@ import {
   SurfaceSource,
   videoSampleFromSurface,
 } from 'skiamovin/media';
+import { OUT, prepareTestMedia } from './fixtures/media.ts';
 
-const OUT = fileURLToPath(new URL('../../../test-output/', import.meta.url));
-mkdirSync(OUT, { recursive: true });
+prepareTestMedia();
 const ffprobe = (file: string, entries: string) =>
   execFileSync('ffprobe', ['-v', 'error', '-show_entries', entries, '-of', 'json', file], { encoding: 'utf8' });
 

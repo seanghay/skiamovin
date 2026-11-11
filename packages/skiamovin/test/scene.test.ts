@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import {
   ALL_FORMATS,
   BufferSource,
@@ -38,8 +37,9 @@ import {
   text,
   video,
 } from 'skiamovin/scene';
+import { OUT, prepareTestMedia } from './fixtures/media.ts';
 
-const OUT = fileURLToPath(new URL('../../../test-output/', import.meta.url));
+prepareTestMedia();
 const pixel = (img: Image, x: number, y: number) => [
   ...img.readPixels(x, y, new ImageInfo(1, 1, ColorType.RGBA_8888, AlphaType.Unpremul)),
 ];
