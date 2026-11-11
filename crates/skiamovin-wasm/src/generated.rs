@@ -1089,6 +1089,38 @@ pub extern "C" fn skm_codec_get_frame(h: u32, index: u32) -> u32 {
 }
 
 #[no_mangle]
+pub extern "C" fn skm_math_layout(tex_ptr: *const u8, tex_len: usize, font_size: f32, display: i32) -> u32 {
+    match api::math::math_layout(unsafe { crate::rt::str_from(tex_ptr, tex_len) }, font_size, display != 0) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_math_info(h: u32) -> *const u8 {
+    match api::math::math_info(h) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_math_piece(h: u32, i: u32) -> u32 {
+    match api::math::math_piece(h, i) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn skm_math_colors(h: u32) -> *const u8 {
+    match api::math::math_colors(h) {
+        Ok(v) => crate::rt::ret_vec(v),
+        Err(e) => { crate::rt::set_error(e); std::ptr::null() }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_object_delete(h: u32) {
     { let _ = api::misc::object_delete(h); }
 }

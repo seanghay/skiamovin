@@ -698,6 +698,26 @@ pub fn codec_get_frame(h: u32, index: u32) -> napi::Result<u32> {
     api::image::codec_get_frame(h, index).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "math_layout")]
+pub fn math_layout(tex: String, font_size: f64, display: bool) -> napi::Result<u32> {
+    api::math::math_layout(&tex, font_size as f32, display).map(|v| v).map_err(err)
+}
+
+#[napi(js_name = "math_info")]
+pub fn math_info(h: u32) -> napi::Result<Float32Array> {
+    api::math::math_info(h).map(|v| Float32Array::new(v)).map_err(err)
+}
+
+#[napi(js_name = "math_piece")]
+pub fn math_piece(h: u32, i: u32) -> napi::Result<u32> {
+    api::math::math_piece(h, i).map(|v| v).map_err(err)
+}
+
+#[napi(js_name = "math_colors")]
+pub fn math_colors(h: u32) -> napi::Result<Uint32Array> {
+    api::math::math_colors(h).map(|v| Uint32Array::new(v)).map_err(err)
+}
+
 #[napi(js_name = "object_delete")]
 pub fn object_delete(h: u32) -> () {
     api::misc::object_delete(h)

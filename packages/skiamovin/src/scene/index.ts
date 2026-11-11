@@ -46,6 +46,8 @@ export {
   posterize,
   threshold,
 } from './grading.ts';
+export type { MathOptions } from './math.ts';
+export { math } from './math.ts';
 export type {
   Child,
   Fit,

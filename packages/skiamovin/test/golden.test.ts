@@ -47,7 +47,7 @@ test('golden: CPU frames match between the Node addon and WebAssembly', async ()
     const r = compare(n.pixels, w, 16);
     // Shapes and gradients use Skia's own rasterizer and match exactly. Glyph masks and shaders can differ by a
     // few levels because of per-platform gamma tables and floating-point math.
-    const limit = n.name.startsWith('shapes') || n.name.startsWith('paths') ? 0 : 4;
+    const limit = n.name.startsWith('shapes') || n.name.startsWith('paths') || n.name.startsWith('math') ? 0 : 4;
     assert.ok(r.max <= limit, `${n.name}: largest difference ${r.max} exceeds ${limit}`);
   }
   assert.deepEqual(web.layout, goldenLayout(), 'Taffy layout is identical');

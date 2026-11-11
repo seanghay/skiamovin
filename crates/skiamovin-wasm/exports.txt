@@ -136,6 +136,10 @@ _skm_codec_frame_durations
 _skm_codec_repetition_count
 _skm_codec_dimensions
 _skm_codec_get_frame
+_skm_math_layout
+_skm_math_info
+_skm_math_piece
+_skm_math_colors
 _skm_object_delete
 _skm_object_exists
 _skm_object_count

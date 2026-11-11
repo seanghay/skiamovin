@@ -11,7 +11,14 @@ execFileSync('cargo', ['build', '-p', 'skiamovin-wasm', '--target', 'wasm32-unkn
   cwd: root,
   stdio: 'inherit',
   // panic=abort: the prebuilt Skia uses emscripten setjmp/longjmp, which can't be combined with wasm exceptions.
-  env: { ...process.env, CARGO_PROFILE_RELEASE_PANIC: 'abort' },
+  env: {
+    ...process.env,
+    CARGO_PROFILE_RELEASE_PANIC: 'abort',
+    // Smaller code matters more than the last few percent of speed for a file people download.
+    CARGO_PROFILE_RELEASE_OPT_LEVEL: 's',
+    CARGO_PROFILE_RELEASE_LTO: 'fat',
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '1',
+  },
 });
 const outDir = join(root, 'packages/skiamovin/wasm');
 mkdirSync(outDir, { recursive: true });

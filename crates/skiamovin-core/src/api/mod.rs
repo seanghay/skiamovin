@@ -8,6 +8,7 @@ pub mod font;
 pub mod gpu;
 pub mod image;
 pub mod manual;
+pub mod math;
 pub mod misc;
 pub mod paint;
 pub mod path;

@@ -7,6 +7,7 @@ import {
   CompositionSink,
   interpolate,
   linearGradient,
+  math,
   morphPath,
   path,
   radialGradient,
@@ -123,6 +124,23 @@ export function goldenScenes(font) {
               ),
             ]),
           ]),
+      }),
+    },
+    {
+      name: 'math',
+      times: [0],
+      comp: new Composition({
+        ...base,
+        render: () =>
+          box(
+            {
+              size: { width: '100%', height: '100%' },
+              background: '#0b0d12',
+              justifyContent: 'center',
+              alignItems: 'center',
+            },
+            [math('\\int_0^1 x^2\\,dx = \\frac{1}{3}', { fontSize: 30, color: '#e0e7ff' })],
+          ),
       }),
     },
     {

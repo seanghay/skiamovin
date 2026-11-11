@@ -15,6 +15,13 @@ taffy = { version = "0.15", default-features = false, features = ["std", "taffy_
 serde_json = "1"
 # Pinned: the simulation must give the same result in every build, and Rapier changes between versions.
 rapier2d = { version = "=0.36.1", features = ["enhanced-determinism"] }
+# Math typesetting (KaTeX-compatible). Pinned for the same reason.
+ratex-parser = "=0.1.15"
+ratex-layout = "=0.1.15"
+ratex-types = "=0.1.15"
+ratex-katex-fonts = "=0.1.15"
+# Reads glyph outlines from font files directly, so math looks the same whatever font backend the platform has.
+ttf-parser = { version = "0.25", default-features = false, features = ["std"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", optional = true }

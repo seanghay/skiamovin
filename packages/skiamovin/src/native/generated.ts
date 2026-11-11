@@ -141,6 +141,10 @@ export interface GeneratedBinding {
   codec_repetition_count(h: number): number;
   codec_dimensions(h: number): Float32Array;
   codec_get_frame(h: number, index: number): number;
+  math_layout(tex: string, font_size: number, display: boolean): number;
+  math_info(h: number): Float32Array;
+  math_piece(h: number, i: number): number;
+  math_colors(h: number): Uint32Array;
   object_delete(h: number): void;
   object_exists(h: number): boolean;
   object_count(): number;
@@ -497,6 +501,10 @@ export const SIGNATURES: Record<string, string> = {
   codec_repetition_count: 'u:i',
   codec_dimensions: 'u:F',
   codec_get_frame: 'uu:u',
+  math_layout: 'sfb:u',
+  math_info: 'u:F',
+  math_piece: 'uu:u',
+  math_colors: 'u:U',
   object_delete: 'u:v',
   object_exists: 'u:b',
   object_count: ':u',

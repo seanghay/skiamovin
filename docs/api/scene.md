@@ -223,6 +223,22 @@ drawing.
 path('M10 80 C40 10 65 10 95 80', { stroke: '#38bdf8', strokeWidth: 4, trim: { end: progress }, arrow: { end: true } })
 ```
 
+### `math`
+
+```ts
+math(tex: string, options?: { fontSize?, color?, display?, write? } & NodeStyle): SceneNode
+```
+
+A LaTeX formula, typeset in the Rust core with RaTeX (KaTeX-compatible: fractions, roots, sums, integrals,
+matrices, `\color`, `\text` and more) using the KaTeX fonts. Glyph outlines are read straight from the font
+files, so formulas are pixel-identical on Node and the web. Each glyph and rule is its own path, so `write`
+(0 to 1) draws the formula on like Manim's `Write`: each piece's outline is traced, then filled, with Manim's lag.
+The node's size is the formula's size.
+
+```ts
+math('\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}', { fontSize: 64, color: '#fff', write: progress })
+```
+
 ### `image`
 
 ```ts
