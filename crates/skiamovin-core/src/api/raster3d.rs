@@ -26,7 +26,8 @@ pub fn raster3d_triangles(width: u32, height: u32, positions: &[f32], colors: &[
     };
     let k = s as f32;
     for t in 0..count {
-        let v = |i: usize| (positions[t * 9 + i * 3] * k, positions[t * 9 + i * 3 + 1] * k, positions[t * 9 + i * 3 + 2]);
+        let v =
+            |i: usize| (positions[t * 9 + i * 3] * k, positions[t * 9 + i * 3 + 1] * k, positions[t * 9 + i * 3 + 2]);
         let (a, b, c) = (v(0), v(1), v(2));
         let area = (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0);
         if area.abs() < 1e-9 {
