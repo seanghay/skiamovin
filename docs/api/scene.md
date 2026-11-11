@@ -356,10 +356,8 @@ listTransitions(): Promise<TransitionInfo[]>   // name, description, author, lic
 
 Blends between two scenes with a shader from [gl-transitions](https://gl-transitions.com) (all 214, tested to
 compile and render). `progress` 0 shows `from` and 1 shows `to`. Names are PascalCase, such as `'CrossZoom'`;
-The basic film transitions also have plain names: `'dissolve'` (a cross-fade), `'fade'` (through black, or the
-`color` param) and `'wipe'`. A cut is no transition at all.
-
-`listTransitions()` lists them with their parameters. Two transitions (`LumaWipe`, `DisplacementMap`) also need
+`listTransitions()` lists them with their parameters. The basic film transitions also have plain names:
+`'dissolve'` (a cross-fade), `'fade'` (through black, or the `color` param) and `'wipe'`. Two transitions (`LumaWipe`, `DisplacementMap`) also need
 an image passed in `textures`. Most transitions are MIT-licensed; each one's license and author are in its info.
 In a `series`, set `transition` on an item to blend into the next one, centered on the cut:
 
