@@ -37,7 +37,7 @@ import { borrowImageFromVideoSample, drawFit } from '../media/index.ts';
 import { type Style, TaffyTree } from '../taffy/index.ts';
 import { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
 import type { Composition } from './composition.ts';
-import { buildEffects, buildGlass } from './effects.ts';
+import { buildEffects, buildGlass, buildLayerStyle } from './effects.ts';
 import { lutAssetsOf, resolveGrades } from './grading.ts';
 import {
   type AudioClip,
@@ -698,6 +698,32 @@ export class FrameRenderer {
       for (const t of temps) t.delete();
     }
 
+    // Adjustment layer: grade or filter everything already drawn beneath, inside the shape.
+    if (st.backdrop) {
+      const bd = st.backdrop;
+      const temps: ImageFilter[] = [];
+      let f: ImageFilter | null = bd.blur ? imageFilters.blur([bd.blur / 2, bd.blur / 2], TileMode.Clamp) : null;
+      if (f) temps.push(f);
+      const cf = bd.grade ? resolveGrades(bd.grade) : null;
+      if (cf) {
+        f = imageFilters.colorFilter(cf, f);
+        if (f) temps.push(f);
+      }
+      if (bd.effects?.length) {
+        const built = buildEffects(bd.effects, b.width, b.height, this.#frame, f);
+        temps.push(...built.temps);
+        f = built.filter;
+      }
+      if (f) {
+        canvas.save();
+        canvas.clipRRect(rr, undefined, true);
+        canvas.saveLayer({ backdrop: f });
+        canvas.restore();
+        canvas.restore();
+      }
+      for (const t of temps) t.delete();
+    }
+
     // Backdrop blur: blur what's behind, inside the shape.
     if (st.backdropBlur) {
       canvas.save();
@@ -714,7 +740,20 @@ export class FrameRenderer {
     const filters: ImageFilter[] = [];
     const graded = st.grade ? resolveGrades(st.grade) : null;
     const fx = st.effects?.length ? st.effects : null;
-    if (opacity < 1 || st.blur || st.filter || st.colorFilter || graded || fx || st.blendMode || st.mask) {
+    const styled = st.layerStyle ? buildLayerStyle(st.layerStyle, (g) => this.#gradient(g, w, h)) : null;
+    if (styled) filters.push(...styled.temps);
+    if (
+      opacity < 1 ||
+      st.blur ||
+      st.filter ||
+      st.colorFilter ||
+      graded ||
+      fx ||
+      styled ||
+      st.blendMode ||
+      st.mask ||
+      st.isolate
+    ) {
       layer = true;
       const p = new Paint();
       if (opacity < 1) p.setAlphaf(Math.max(0, opacity));
@@ -724,6 +763,7 @@ export class FrameRenderer {
         filters.push(bl);
         f = bl;
       }
+      if (styled?.filter) f = f ? (imageFilters.compose(f, styled.filter) ?? f) : styled.filter;
       if (fx) {
         const built = buildEffects(fx, b.width, b.height, this.#frame, f);
         filters.push(...built.temps);
@@ -843,9 +883,14 @@ export class FrameRenderer {
     if (st.mask) {
       const m = offscreen.get(st.mask);
       if (m) {
-        const p = new Paint().setBlendMode(BlendMode.DstIn);
+        const mode = st.maskMode ?? 'alpha';
+        const p = new Paint().setBlendMode(mode.endsWith('inverted') ? BlendMode.DstOut : BlendMode.DstIn);
+        // A luminance matte uses brightness as coverage.
+        const luma = mode.startsWith('luminance') ? colorFilters.luma() : null;
+        if (luma) p.setColorFilter(luma);
         canvas.drawImage(m, [0, 0], p);
         p.delete();
+        luma?.delete();
       }
     }
 
@@ -873,7 +918,8 @@ export class FrameRenderer {
       case 'text': {
         const p = this.#paragraphFor(n);
         p.layout(Math.max(0, w - il - ir));
-        if (n.text.split) this.#paintSplit(canvas, p, n, il, it);
+        if (n.text.warp && n.text.warp.bend !== 0) this.#paintWarped(canvas, p, n, il, it);
+        else if (n.text.split) this.#paintSplit(canvas, p, n, il, it);
         else if (this.comp.textRendering === 'native' || !p.paintOutlines(canvas, [il, it])) p.paint(canvas, [il, it]);
         break;
       }
@@ -1016,6 +1062,36 @@ export class FrameRenderer {
 
   /** Frame number being drawn, for effects that change every frame (grain). */
   #frame = 0;
+  #paintWarped(
+    canvas: Canvas,
+    p: InstanceType<typeof textlayout.Paragraph>,
+    n: Extract<SceneNode, { type: 'text' }>,
+    x: number,
+    y: number,
+  ): void {
+    const outline = new Path();
+    const lines = p.getLineMetrics();
+    for (let i = 0; i < lines.length; i++) {
+      const lp = p.getPath(i);
+      outline.addPath(lp);
+      lp.delete();
+    }
+    const width = Math.max(1, p.longestLine()),
+      height = Math.max(1, p.height());
+    const warped = outline.warp(n.text.warp!.style, n.text.warp!.bend, [0, 0, width, height], 0.75);
+    const paint = this.#paint.reset().setAntiAlias(true);
+    const color = n.text.color;
+    if (color instanceof Shader) paint.setShader(color);
+    else paint.setColor(color ?? '#000000');
+    canvas.save();
+    canvas.translate([x, y]);
+    canvas.drawPath(warped, paint);
+    canvas.restore();
+    paint.setShader(null);
+    outline.delete();
+    warped.delete();
+  }
+
   #splitStyles = new Float32Array(0);
   #splitColors = new Uint32Array(0);
 

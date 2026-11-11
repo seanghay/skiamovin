@@ -1103,6 +1103,11 @@ pub fn path_morph_at(h: u32, t: f64) -> napi::Result<u32> {
     api::path_motion::path_morph_at(h, t as f32).map(|v| v).map_err(err)
 }
 
+#[napi(js_name = "path_warp")]
+pub fn path_warp(h: u32, mode: u32, bend: f64, l: f64, t: f64, r: f64, b: f64, step: f64) -> napi::Result<u32> {
+    api::path_motion::path_warp(h, mode, bend as f32, l as f32, t as f32, r as f32, b as f32, step as f32).map(|v| v).map_err(err)
+}
+
 #[napi(js_name = "picture_recorder_new")]
 pub fn picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()

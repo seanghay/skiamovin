@@ -299,3 +299,58 @@ pub fn path_morph_at(h: u32, t: f32) -> R<u32> {
     }
     Ok(wrap(out.detach()))
 }
+
+// ---- Warping ----
+
+/// Bends a path inside the box `l, t, r, b`, for text warps. Each contour is resampled every `step` units so
+/// curves bend smoothly. `mode`: 0 arc, 1 arch, 2 bulge, 3 flag, 4 wave, 5 rise. `bend` is -1..1.
+#[allow(clippy::too_many_arguments)]
+pub fn path_warp(h: u32, mode: u32, bend: f32, l: f32, t: f32, r: f32, b: f32, step: f32) -> R<u32> {
+    let path = path_of(h)?;
+    let (w, hh) = ((r - l).max(1e-3), (b - t).max(1e-3));
+    let (cx, cy) = ((l + r) / 2.0, (t + b) / 2.0);
+    let pi = std::f32::consts::PI;
+    let map = |p: Point| -> Point {
+        let u = (p.x - cx) / (w / 2.0);
+        let v = (p.y - t) / hh;
+        match mode {
+            0 => {
+                if bend.abs() < 1e-3 {
+                    return p;
+                }
+                // Along a circle whose arc length over the box width spans `bend` × 180°.
+                let radius = w / (bend * pi);
+                let theta = (p.x - cx) / radius;
+                let dist = radius + (b - p.y);
+                Point::new(cx + dist * theta.sin(), b + radius - dist * theta.cos())
+            }
+            1 => Point::new(p.x, p.y - bend * hh * 0.5 * (1.0 - u * u) * (1.0 - 0.5 * v)),
+            2 => Point::new(p.x, cy + (p.y - cy) * (1.0 + bend * 0.6 * (1.0 - u * u))),
+            3 => Point::new(p.x, p.y + bend * hh * 0.3 * ((u + 1.0) * pi).sin()),
+            4 => Point::new(p.x, p.y + bend * hh * 0.3 * ((u + 1.0) * pi + v * pi * 0.5).sin()),
+            5 => Point::new(p.x, p.y - bend * hh * 0.5 * u),
+            _ => p,
+        }
+    };
+    let step = step.max(0.25);
+    let mut out = PathBuilder::new();
+    for m in ContourMeasureIter::new(&path, false, None) {
+        let len = m.length();
+        let n = ((len / step).ceil() as usize).max(2);
+        for i in 0..=n {
+            if let Some((p, _)) = m.pos_tan(len * i as f32 / n as f32) {
+                let q = map(p);
+                if i == 0 {
+                    out.move_to(q);
+                } else {
+                    out.line_to(q);
+                }
+            }
+        }
+        if m.is_closed() {
+            out.close();
+        }
+    }
+    out.set_fill_type(path.fill_type());
+    Ok(wrap(out.detach()))
+}

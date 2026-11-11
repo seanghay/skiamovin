@@ -1719,6 +1719,14 @@ pub extern "C" fn skm_path_morph_at(h: u32, t: f32) -> u32 {
 }
 
 #[no_mangle]
+pub extern "C" fn skm_path_warp(h: u32, mode: u32, bend: f32, l: f32, t: f32, r: f32, b: f32, step: f32) -> u32 {
+    match api::path_motion::path_warp(h, mode, bend, l, t, r, b, step) {
+        Ok(v) => v,
+        Err(e) => { crate::rt::set_error(e); 0 }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn skm_picture_recorder_new() -> u32 {
     api::picture::picture_recorder_new()
 }

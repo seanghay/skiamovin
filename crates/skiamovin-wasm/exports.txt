@@ -217,6 +217,7 @@ _skm_path_pos_tan_at
 _skm_path_total_length
 _skm_path_morph_new
 _skm_path_morph_at
+_skm_path_warp
 _skm_picture_recorder_new
 _skm_picture_recorder_begin
 _skm_picture_recorder_finish

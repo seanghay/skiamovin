@@ -222,6 +222,7 @@ export interface GeneratedBinding {
   path_total_length(h: number): number;
   path_morph_new(a: number, b: number): number;
   path_morph_at(h: number, t: number): number;
+  path_warp(h: number, mode: number, bend: number, l: number, t: number, r: number, b: number, step: number): number;
   picture_recorder_new(): number;
   picture_recorder_begin(h: number, l: number, t: number, r: number, b: number): number;
   picture_recorder_finish(h: number): number;
@@ -573,6 +574,7 @@ export const SIGNATURES: Record<string, string> = {
   path_total_length: 'u:f',
   path_morph_new: 'uu:u',
   path_morph_at: 'uf:u',
+  path_warp: 'uuffffff:u',
   picture_recorder_new: ':u',
   picture_recorder_begin: 'uffff:u',
   picture_recorder_finish: 'u:u',

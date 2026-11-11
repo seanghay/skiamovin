@@ -1,7 +1,7 @@
 // Scene nodes: plain objects describing one frame. Built inside `render(ctx)`.
 import type { Input, InputAudioTrack, InputVideoTrack } from 'mediabunny';
 import type { Color } from '../core/color.ts';
-import type { BlendMode } from '../core/enums.ts';
+import { BlendMode } from '../core/enums.ts';
 import {
   type Canvas,
   type ColorFilter,
@@ -13,7 +13,7 @@ import {
 } from '../core/skia.ts';
 import type { Style } from '../taffy/index.ts';
 import type { FontAsset, ImageAsset, LottieAsset, SvgAsset } from './assets.ts';
-import type { Effect, GlassOptions } from './effects.ts';
+import type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 import type { Grade } from './grading.ts';
 
 // Render context
@@ -110,6 +110,14 @@ export interface VisualStyle {
   blendMode?: BlendMode | string;
   zIndex?: number;
   mask?: SceneNode;
+  /** How `mask` is read: its alpha (default) or its brightness, optionally inverted. */
+  maskMode?: 'alpha' | 'luminance' | 'alpha-inverted' | 'luminance-inverted';
+  /** Draws the node and its children in their own group, so blend modes inside only mix with each other. */
+  isolate?: boolean;
+  /** Photoshop-style layer styles that follow the shape of the node's content. */
+  layerStyle?: LayerStyle;
+  /** Grades, effects or blur applied to everything drawn beneath the node, inside its shape. See `adjustmentLayer`. */
+  backdrop?: { grade?: Grade | readonly Grade[]; effects?: readonly Effect[]; blur?: number };
   cache?: string;
 }
 
@@ -139,6 +147,8 @@ export interface TextProps {
   visibleGraphemes?: number;
   /** Animates the text in pieces: characters, words or lines, each with its own look. See `textAnimator`. */
   split?: SplitText;
+  /** Bends the text, as in Photoshop. `bend` is -1..1 and can be animated. */
+  warp?: { style: 'arc' | 'arch' | 'bulge' | 'flag' | 'wave' | 'rise'; bend: number };
 }
 
 /** One piece of split text. */
@@ -271,6 +281,7 @@ const TEXT_KEYS = new Set([
   'direction',
   'visibleGraphemes',
   'split',
+  'warp',
 ]);
 
 export function text(content: string | readonly (string | Span)[], style: NodeStyle & TextProps = {}): SceneNode {
@@ -472,6 +483,33 @@ export function path(d: string | Path, style: NodeStyle & PathStyle = {}): Scene
     style: rest,
     children: [],
   };
+}
+
+/**
+ * An adjustment layer: grades, effects or blur applied to everything beneath it (earlier siblings and what's
+ * behind its parent), inside its own box. Full size by default.
+ */
+export function adjustmentLayer(
+  adjust: { grade?: Grade | readonly Grade[]; effects?: readonly Effect[]; blur?: number },
+  style: NodeStyle = {},
+): SceneNode {
+  return {
+    type: 'box',
+    style: { position: 'absolute', inset: 0, size: { width: '100%', height: '100%' }, ...style, backdrop: adjust },
+    children: [],
+  };
+}
+
+/**
+ * A clipping mask, as in Photoshop: `layers` are drawn only where `base` is, keeping its shape. For a photo
+ * inside text: `clipTo(text('SALE', ...), image(photo, ...))`.
+ */
+export function clipTo(base: SceneNode, ...layers: Child[]): SceneNode {
+  const over = flatten(layers).map((l) => ({
+    ...l,
+    style: { position: 'absolute' as const, inset: 0, ...l.style, blendMode: BlendMode.SrcATop },
+  }));
+  return { type: 'box', style: { isolate: true }, children: [base, ...over] };
 }
 
 /** Shows content during `[start, end)` seconds with local time. */

@@ -613,6 +613,18 @@ export class Path extends SkObject {
   totalLength(): number {
     return N().path_total_length(this.handle);
   }
+  /**
+   * Bends the path inside `bounds`, as text warps do. `bend` is -1..1. Curves are resampled every `step` units.
+   */
+  warp(
+    style: 'arc' | 'arch' | 'bulge' | 'flag' | 'wave' | 'rise',
+    bend: number,
+    [l, t, r, b]: readonly [number, number, number, number],
+    step = 1,
+  ): Path {
+    const mode = { arc: 0, arch: 1, bulge: 2, flag: 3, wave: 4, rise: 5 }[style];
+    return Path._wrap(N().path_warp(this.handle, mode, bend, l, t, r, b, step));
+  }
   reset(): this {
     N().path_reset(this.handle);
     return this;

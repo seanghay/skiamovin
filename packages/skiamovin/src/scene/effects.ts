@@ -1,8 +1,9 @@
 // Finishing effects applied to a node and everything inside it, and a glass material for what's behind a node.
 // Each function returns a plain description; the renderer builds the Skia filters.
-import { type Color, toColor4f } from '../core/color.ts';
+import { type Color, toColor4f, toColorInt } from '../core/color.ts';
 import { BlendMode, TileMode } from '../core/enums.ts';
-import { colorFilters, type ImageFilter, imageFilters, RuntimeEffect } from '../core/skia.ts';
+import { colorFilters, type ImageFilter, imageFilters, RuntimeEffect, type Shader } from '../core/skia.ts';
+import type { Gradient } from './nodes.ts';
 
 export type Effect =
   | { kind: 'grain'; amount: number; size: number; seed: number; animated: boolean }
@@ -294,5 +295,103 @@ export function buildGlass(
     blurred,
   );
   if (filter) temps.push(filter);
+  return { filter, temps };
+}
+
+export interface LayerStyle {
+  /** A shadow shaped like the content (text, paths, images with transparency). */
+  dropShadow?: { color?: Color; offset?: readonly [number, number]; blur?: number };
+  /** A soft glow outside the content. */
+  outerGlow?: { color?: Color; size?: number; opacity?: number };
+  /** A soft glow inside the content's edges. */
+  innerGlow?: { color?: Color; size?: number; opacity?: number };
+  /** An outline around the content. */
+  stroke?: { color?: Color; width?: number };
+  /** Fills the content with a color, keeping its shape. */
+  colorOverlay?: { color: Color; opacity?: number };
+  /** Fills the content with a gradient, keeping its shape. */
+  gradientOverlay?: { gradient: Gradient; opacity?: number };
+}
+
+function tinted(color: Color, opacity: number): ReturnType<typeof colorFilters.matrix> {
+  // Replace color, keep alpha scaled by opacity.
+  const [r, g, b, a] = toColor4f(color);
+  const k = a * opacity;
+  return colorFilters.matrix([0, 0, 0, 0, r, 0, 0, 0, 0, g, 0, 0, 0, 0, b, 0, 0, 0, k, 0]);
+}
+
+/** Builds the image filter for a layer style, in Photoshop's order. @internal */
+export function buildLayerStyle(
+  style: LayerStyle,
+  gradientShader: (g: Gradient) => Shader | null,
+): { filter: ImageFilter | null; temps: ImageFilter[] } {
+  const temps: ImageFilter[] = [];
+  const keep = (x: ImageFilter | null) => {
+    if (x) temps.push(x);
+    return x;
+  };
+  let content: ImageFilter | null = null;
+  if (style.colorOverlay) {
+    const { color, opacity = 1 } = style.colorOverlay;
+    const fill = keep(imageFilters.colorFilter(tinted(color, opacity), null));
+    content = keep(imageFilters.blend(BlendMode.SrcOver, null, keep(imageFilters.blend(BlendMode.SrcIn, null, fill))));
+  }
+  if (style.gradientOverlay) {
+    const sh = gradientShader(style.gradientOverlay.gradient);
+    if (sh) {
+      const fill = keep(imageFilters.shader(sh));
+      const masked = keep(imageFilters.blend(BlendMode.SrcIn, null, fill));
+      const alpha = style.gradientOverlay.opacity ?? 1;
+      const faded =
+        alpha < 1
+          ? keep(
+              imageFilters.colorFilter(
+                colorFilters.matrix([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, alpha, 0]),
+                masked,
+              ),
+            )
+          : masked;
+      content = keep(imageFilters.blend(BlendMode.SrcOver, content, faded));
+    }
+  }
+  if (style.innerGlow) {
+    const { color = '#ffffff', size = 8, opacity = 0.75 } = style.innerGlow;
+    // Glow from the edges inward: blur the inverted shape, keep it inside the shape.
+    const [r, g, b, a] = toColor4f(color);
+    const inverted = keep(
+      imageFilters.colorFilter(
+        colorFilters.matrix([0, 0, 0, 0, r, 0, 0, 0, 0, g, 0, 0, 0, 0, b, 0, 0, 0, -a * opacity, a * opacity]),
+        null,
+      ),
+    );
+    const blurred = keep(imageFilters.blur([size / 2, size / 2], TileMode.Decal, inverted));
+    const inside = keep(imageFilters.blend(BlendMode.SrcIn, null, blurred));
+    content = keep(imageFilters.blend(BlendMode.SrcOver, content, inside));
+  }
+  const under: (ImageFilter | null)[] = [];
+  if (style.dropShadow) {
+    const { color = 'rgba(0,0,0,0.5)', offset = [0, 4], blur = 8 } = style.dropShadow;
+    under.push(
+      keep(imageFilters.dropShadowOnly([offset[0], offset[1]], [blur / 2, blur / 2], toColorInt(color), null)),
+    );
+  }
+  if (style.outerGlow) {
+    const { color = '#ffffff', size = 12, opacity = 0.75 } = style.outerGlow;
+    under.push(
+      keep(
+        imageFilters.blur(
+          [size / 2, size / 2],
+          TileMode.Decal,
+          keep(imageFilters.colorFilter(tinted(color, opacity), null)),
+        ),
+      ),
+    );
+  }
+  if (style.stroke) {
+    const { color = '#000000', width = 2 } = style.stroke;
+    under.push(keep(imageFilters.colorFilter(tinted(color, 1), keep(imageFilters.dilate([width, width], null)))));
+  }
+  if (!content && !under.length) return { filter: null, temps };
+  const filter = keep(imageFilters.merge([...under, content]));
   return { filter, temps };
 }

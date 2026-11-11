@@ -503,6 +503,28 @@ themselves.
 `backgrounds.grid()` are animated, full-size backgrounds with good defaults. Each takes colors, a speed and
 node style.
 
+## Compositing
+
+| Feature | Description |
+|---|---|
+| `mask`, `maskMode` | Any node can mask another. `maskMode` is `'alpha'` (default), `'luminance'`, `'alpha-inverted'` or `'luminance-inverted'` |
+| `clipTo(base, ...layers)` | A clipping mask: layers draw only where `base` is, as in Photoshop. `clipTo(text('SALE'), image(photo))` |
+| `adjustmentLayer({ grade?, effects?, blur? }, style?)` | Grades or filters everything beneath it, inside its box (full size by default) |
+| `isolate: true` | Draws a node and its children as their own group, so blend modes inside only mix with each other |
+| `layerStyle` | Photoshop-style styles that follow the content's shape (text, paths, transparent images): `dropShadow`, `outerGlow`, `innerGlow`, `stroke`, `colorOverlay`, `gradientOverlay` |
+| `warp` (text) | Bends text: `{ style: 'arc' \| 'arch' \| 'bulge' \| 'flag' \| 'wave' \| 'rise', bend }`, with `bend` from -1 to 1. `Path.warp()` does the same for any path |
+
+```ts
+text('SUMMER', {
+  fontSize: 120,
+  layerStyle: {
+    gradientOverlay: { gradient: linearGradient(180, ['#fde68a', '#f97316']) },
+    stroke: { color: '#1e1b4b', width: 4 },
+    dropShadow: { offset: [0, 10], blur: 20 },
+  },
+})
+```
+
 ## Color grading
 
 Set `grade` on any node to grade it and everything inside it. Grades apply in order, and each takes a `strength`
