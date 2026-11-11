@@ -43,7 +43,8 @@ provider.registerTypeface(typeface, 'Inter'); // alias is optional; defaults to 
 
 Setters, all chainable: `setTextStyle`, `setTextAlign(TextAlign)`, `setTextDirection(TextDirection)`,
 `setMaxLines(n)`, `setEllipsis(str)`, `setHeight(h)`, `setTextHeightBehavior(...)`, `setStrutStyle(StrutStyle)`,
-`setReplaceTabCharacters(bool)`, `setApplyRoundingHack(bool)`.
+`setReplaceTabCharacters(bool)`, `setApplyRoundingHack(bool)`, `turnHintingOff()` (unhinted advances, so line
+breaks and positions match on every platform).
 
 ## `TextStyle`
 
@@ -75,7 +76,9 @@ const paragraph = builder.build();
 | Member | Description |
 |---|---|
 | `layout(width: number): void` | Must be called before measuring or painting |
-| `paint(canvas: Canvas, origin: [x, y]): void` |  |
+| `paint(canvas: Canvas, origin: [x, y]): void` | Draws with the platform's glyph rasterizer |
+| `paintOutlines(canvas, origin): boolean` | Draws from glyph outlines, which look the same on every platform. Returns false, drawing nothing, for decorations, backgrounds or color emoji |
+| `paintSplit(canvas, origin, unitStarts, styles, colors): void` | Draws the text in pieces, each with its own opacity, offset, scale, rotation and color |
 | `height()`, `maxWidth()`, `minIntrinsicWidth()`, `maxIntrinsicWidth()`, `longestLine()` |  |
 | `alphabeticBaseline()`, `ideographicBaseline()`, `didExceedMaxLines()`, `lineNumber()` |  |
 | `getLineMetrics(): LineMetrics[]` | Per line: baseline, ascent, descent, width, start/end indices |

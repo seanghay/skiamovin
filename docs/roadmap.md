@@ -33,9 +33,12 @@ and in WebAssembly, and compares the pixels and the Taffy layout. Text is drawn 
 (`textRendering: 'outlines'`), which made it match across platforms and also made moving text faster. Every
 later phase adds its scenes here.
 
-## Phase 1: Animation basics
+## Phase 1: Animation basics (mostly done)
 
-Additions to what already exists (`Timeline`, `spring`, `Easing`, `interpolate`, `random`, `noise`).
+Additions to what already exists (`Timeline`, `spring`, `Easing`, `interpolate`, `random`, `noise`). Done: richer
+timelines, stagger, keyframes, easing, expression helpers, flow helpers (as `Timeline.all`, `chain`, `sequence`
+and `delay`), named time events, split text, text animators, text effects, path drawing, morphing and motion
+along a path. Still open: `write()`, masks for split text, and editing time events in the studio.
 
 | Idea | From | What we add |
 |---|---|---|

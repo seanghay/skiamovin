@@ -15,6 +15,10 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | `skiamovin/media` | `registerNativeCodecs`, `SurfaceSource`, `ImageSink`, `videoSampleFromSurface`, `videoSampleFromImage`, `imageFromVideoSample` |
 | `skiamovin/taffy` | `TaffyTree` with Flexbox, Grid (incl. `repeat()`, `minmax()`, `fr`, spans, template areas) and Block; JS measure functions |
 | `skiamovin/scene` | `Composition`, `CompositionModule`, all nodes except `lottie`, assets from Mediabunny `Source`s, `interpolate`, `interpolateColor`, `spring`, `Easing`, `Timeline`, `random`, `noise`, `Render` (incl. multi-worker `concurrency` on Node and in the browser), `CompositionSink`, `CompositionAudioSink`, `analyzeAudio`, `Player` |
+| Animation helpers | `stagger`, `keyframes`, `wiggle`, `loopTime`; easing including `smooth`, `piecewise`, `custom` (from an SVG path) and `irregular`; timelines with percent offsets, repeat, yoyo, `timeScale`, keyframes, nesting and `all`/`chain`/`sequence`/`delay`; named `events` on compositions |
+| Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
+| Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
+| Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |
 | Audio | Mixing of `audio()` and `video()` sources, trims, loops, playback rate, volume automation, soft limiter |
 | Web Workers in the browser | `serveComposition()` serves a composition from a worker. `Player` previews and `Render` exports run there (`worker` option); `Render` can split an export across several workers (`concurrency`) |
 | GPU frames in the browser | Frames stay on the GPU from drawing to the encoder (`Render`) or the screen (`Player`) |

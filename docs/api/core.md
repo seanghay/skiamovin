@@ -203,8 +203,21 @@ const trim = pathEffects.trim(0, 0.5); // draw only the first half: handy for li
 const measure = new ContourMeasureIter(path, false); // length, position and tangent along the path
 ```
 
-`Path.interpolate(a, b, t)` interpolates between two paths with compatible verbs (`Path::interpolate`). Use it
-for morphing.
+`Path.interpolate(a, b, t)` interpolates between two paths with compatible verbs (`Path::interpolate`). For
+paths that don't match, use `PathMorph`:
+
+```ts
+const morph = new PathMorph(circle, star); // matches the two shapes once
+morph.at(0.5);                             // the halfway shape, cheap to call every frame
+```
+
+Lengths across all contours together, which suit drawing animations:
+
+| Method | Description |
+|---|---|
+| `path.trim(start, end, offset?)` | The part between two fractions of the total length. `offset` moves it along, wrapping around |
+| `path.posTanAt(fraction)` | `[x, y, tangentX, tangentY]` at a fraction of the total length |
+| `path.totalLength()` | Length of all contours |
 
 ## `Image` and `images`
 

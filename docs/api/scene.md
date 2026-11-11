@@ -81,6 +81,13 @@ interface CompositionOptions<Props> {
   colorSpace?: 'srgb' | 'display-p3' | 'rec2020-pq' | 'rec2020-hlg';
   /** Fonts available to `text` nodes, by family name. */
   fonts?: FontAsset[];
+  /**
+   * 'outlines' (default) draws text from glyph outlines, so it looks the same on every platform and moves
+   * smoothly. 'native' uses the platform's glyph rasterizer.
+   */
+  textRendering?: 'outlines' | 'native';
+  /** Named moments in seconds, such as `{ drop: 2.4 }`. Available as `ctx.events` and as `Timeline` labels. */
+  events?: Record<string, number>;
   defaultProps?: Props;
   /** Must be pure and synchronous: the same timestamp and props always give the same tree. */
   render: (ctx: RenderContext<Props>) => Child;
@@ -97,7 +104,17 @@ interface RenderContext<Props> {
   width: number;
   height: number;
   props: Props;
+  /** The composition's named events, in composition time. */
+  events: Record<string, number>;
 }
+```
+
+Keep events in a `composition.meta.json` next to the composition and pass them in, so a timeline editor can move
+them without touching code:
+
+```ts
+import meta from './composition.meta.json' with { type: 'json' };
+export const promo = new Composition({ ...options, events: meta.events });
 ```
 
 `render` may be called in any order, in several workers, and more than once per timestamp. Derive everything
@@ -154,13 +171,57 @@ interface TextProps {
   ellipsis?: string;
   locale?: string;
   direction?: 'ltr' | 'rtl';
-  /** Draw only the first N grapheme clusters. Use for typewriter effects. */
+  /** Draw only the first N grapheme clusters. Use for typewriter effects, with `graphemeCount(text)`. */
   visibleGraphemes?: number;
+  /** Animate the text in pieces. */
+  split?: SplitText;
 }
+
+interface SplitText {
+  by: 'chars' | 'words' | 'lines';
+  style: (unit: TextUnit) => UnitStyle;
+}
+interface TextUnit { index: number; count: number; text: string; color?: Color }
+interface UnitStyle { opacity?: number; x?: number; y?: number; scale?: number; rotate?: number; color?: Color }
+```
+
+With `split`, each piece gets its own opacity, offset, scale, rotation and color, and turns around its own
+center. Characters are grapheme clusters (a letter and its marks move together, which matters for Khmer, Thai,
+Hindi and Arabic). Words follow the locale's word breaks. Usually you'll build `split` with
+[`textAnimator`](#textanimator), or write the style function yourself:
+
+```ts
+text('Hello world', { split: { by: 'words', style: ({ index }) => ({ y: index * 10 }) } })
 ```
 
 Laid out with SkParagraph through a Taffy measure function, so text wraps to its box and gives the box an
 intrinsic size. Families resolve against the composition's `fonts`, then the bundled fallback fonts.
+
+### `path`
+
+```ts
+path(d: string | Path, style?: NodeStyle & PathStyle): SceneNode
+
+interface PathStyle {
+  fill?: Color | Gradient | null;   // default black without a stroke, none with one
+  stroke?: Color | Gradient;
+  strokeWidth?: number;             // default 1
+  strokeCap?: 'butt' | 'round' | 'square';
+  strokeJoin?: 'miter' | 'round' | 'bevel';
+  /** Draw part of the path, as fractions of its total length. Animate `end` to draw it on. */
+  trim?: { start?: number; end?: number; offset?: number };
+  /** Arrowheads at the (trimmed) ends. `true` sizes them from the stroke width. */
+  arrow?: { start?: boolean | number; end?: boolean | number };
+}
+```
+
+The path's coordinates are in the node's own space, and the node's size defaults to the path's right and bottom
+edges. Lengths for `trim` run across all contours together, so `trim: { end: 0.5 }` is half of the whole
+drawing.
+
+```ts
+path('M10 80 C40 10 65 10 95 80', { stroke: '#38bdf8', strokeWidth: 4, trim: { end: progress }, arrow: { end: true } })
+```
 
 ### `image`
 
@@ -440,8 +501,49 @@ Computed analytically from `timestamp`, with no simulation state, so it's determ
 
 `Easing.linear`, `Easing.in(fn)`, `Easing.out(fn)`, `Easing.inOut(fn)`, `Easing.quad`, `Easing.cubic`,
 `Easing.quart`, `Easing.quint`, `Easing.sine`, `Easing.expo`, `Easing.circ`, `Easing.back(overshoot?)`,
-`Easing.elastic(bounciness?)`, `Easing.bounce`, `Easing.bezier(x1, y1, x2, y2)`, `Easing.steps(n)`.
-Shorthands: `Easing.outCubic`, `Easing.inOutQuad`, and so on.
+`Easing.elastic(bounciness?)`, `Easing.bounce`, `Easing.bezier(x1, y1, x2, y2)` (also `cubicBezier`),
+`Easing.steps(n)`. Shorthands: `Easing.outCubic`, `Easing.inOutQuad`, and so on.
+
+| Ease | Description |
+|---|---|
+| `Easing.smooth` | Manim's default S-curve |
+| `Easing.thereAndBack` | Goes to 1 at the midpoint and back to 0 |
+| `Easing.squish(ease, a, b)` | Runs `ease` only between `a` and `b` |
+| `Easing.piecewise(points)` | Straight lines between points, like CSS `linear()`: `piecewise([0, [0.8, 0.5], 1])` |
+| `Easing.custom(svgPath)` | An ease drawn as a path from (0, 0) to (1, 1): `custom('M0,0 C0.5,0 0.5,1 1,1')` |
+| `Easing.irregular(seed, { points?, strength? })` | A jittery ease, the same on every render |
+
+### `stagger`
+
+```ts
+stagger(value: number | [from, to], options?: StaggerOptions): (index: number, count: number) => number
+
+interface StaggerOptions {
+  from?: number | 'first' | 'last' | 'center' | 'edges' | 'random';
+  grid?: [rows, columns];
+  axis?: 'x' | 'y';
+  ease?: EasingFunction;
+  start?: number;
+  seed?: string | number;     // for from: 'random'
+  reversed?: boolean;
+}
+```
+
+Spreads a value over items by their distance from a starting point. A number gives that much per step
+(`stagger(0.05)` for delays); a range spreads values across it (`stagger([0, 360])` for rotations). With a grid,
+distance is measured in 2D.
+
+```ts
+items.map((item, i) => box({ opacity: interpolate(t - stagger(0.04, { from: 'center' })(i, items.length), [0, 0.4], [0, 1]) }))
+```
+
+### `keyframes`, `wiggle` and `loopTime`
+
+```ts
+keyframes(timestamp, values: number[], { times?, easing?, duration?, delay? }): number
+wiggle(timestamp, freq, amount, { seed?, octaves? }): number      // smooth seeded randomness, like After Effects
+loopTime(timestamp, duration, mode?: 'cycle' | 'pingpong'): number
+```
 
 ### `Timeline`
 
@@ -465,14 +567,67 @@ const v = timeline.getValues(timestamp); // { title: { opacity, y, scale }, subt
 | `from(target, values, options)` | Animate from `values` to the current value |
 | `fromTo(target, from, to, options)` |  |
 | `set(target, values, { at? })` | Jump to values. At `at: 0` (the default), these are initial values |
+| `keyframes(target, { x: [0, 100, 50] }, { duration, times?, easing? })` | Animate through several values |
 | `label(name, at)` | Name a position |
-| `add(timeline, at)` | Nest another timeline |
+| `add(timeline, at)` | Nest another timeline. One with its own repeats or speed keeps its own clock |
 | `getValues(timestamp)` | Evaluate every target |
+| `valueAt(target, prop, timestamp)` | Evaluate one property |
+| `duration`, `totalDuration` | One play, and the length including the timeline's repeats and speed |
+| `Timeline.all(...)`, `Timeline.chain(...)`, `Timeline.sequence(gap, ...)`, `Timeline.delay(seconds, tl)` | Combine timelines |
 
-`options`: `{ at, duration, easing?, stagger? }`, all times in seconds. `at` takes a number, a label, `'>'` (end
-of the previous tween), `'<'` (its start), or an offset such as `'>-0.2'`, `'<+0.15'` or `'outro+1'`. Values may
-be numbers, colors (interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their
-`set` value, or to `0` (`1` for `opacity` and `scale`).
+`new Timeline({ repeat?, yoyo?, repeatDelay?, timeScale?, labels? })`. `labels` are known from the start, for
+example `labels: composition.events`.
+
+Tween options: `{ at, duration, easing?, stagger?, repeat?, yoyo?, repeatDelay? }`, all times in seconds. `at`
+takes a number, a label, `'>'` (end of the previous tween), `'<'` (its start), or an offset such as `'>-0.2'`,
+`'<+0.15'`, `'<50%'` (half of the previous tween's length) or `'outro+1'`. `stagger` takes seconds, a `stagger()`
+function, or stagger options with `each`. `repeat: -1` repeats forever. Values may be numbers, colors
+(interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their `set` value, or to `0`
+(`1` for `opacity` and `scale`).
+
+### `morphPath` and `alongPath`
+
+```ts
+morphPath(from: string | Path, to: string | Path, t: number): Path
+alongPath(path: string | Path, progress: number): { x: number; y: number; angle: number }
+```
+
+`morphPath` blends one shape into another. Contours are paired by size, given matching points by splitting the
+longest curves, and closed contours are lined up at their best starting point so the shape doesn't twist. The
+matching runs once per pair of paths and is reused. `alongPath` gives the position and heading (degrees) at a
+fraction of a path's total length, for moving a node along it.
+
+### `textAnimator`
+
+```ts
+textAnimator(options: {
+  by: 'chars' | 'words' | 'lines';
+  start?: number; end?: number; offset?: number;     // the selected range, 0..1 of the text
+  shape?: 'square' | 'rampUp' | 'rampDown' | 'triangle' | 'round' | 'smooth';
+  ease?: EasingFunction;
+  order?: 'forward' | 'reverse' | 'random';
+  seed?: string | number;
+  amount?: number;
+  properties: UnitStyle;                             // the look of a fully selected piece
+}): SplitText
+```
+
+Like After Effects' text animators: `properties` apply to the pieces inside the range, partly to those at its
+edges. Move the range with `offset` to sweep the effect across the text. For letters that rise and fade in
+from left to right:
+
+```ts
+text('Hello', { split: textAnimator({ by: 'chars', shape: 'rampUp', end: 0.3, offset: t * 1.3 - 0.3,
+  properties: { opacity: 0, y: 24 } }) })
+```
+
+### Text helpers
+
+```ts
+scramble(text, progress, { frame?, seed?, characters?, locale? }): string   // reveal with random characters
+counter(value, { decimals?, locale?, prefix?, suffix?, grouping? }): string // use with fontFeatures: { tnum: 1 }
+graphemeCount(text, locale?): number                                       // for visibleGraphemes
+```
 
 ### `random` and `noise`
 
