@@ -67,7 +67,15 @@ jobs:
           key: native
       - name: Install Linux packages
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libfreetype-dev
+        # The runners' package mirror sometimes fails to resolve; retry instead of failing the build.
+        run: |
+          for attempt in 1 2 3 4; do
+            sudo apt-get -o Acquire::Retries=5 update &&
+              sudo apt-get -o Acquire::Retries=5 install -y libfontconfig1-dev libfreetype-dev && exit 0
+            echo "apt failed (attempt $attempt), retrying in 30 s"
+            sleep 30
+          done
+          exit 1
       - run: npm ci
       - name: Clippy
         run: cargo clippy -p skiamovin-node -p skiamovin-codecs -- -D warnings
