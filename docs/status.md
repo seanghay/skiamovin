@@ -38,6 +38,9 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Hand-drawn strokes | `stroke()`: variable-width, tapered strokes from points with pressure or along a path, drawn on over time |
 | Scattering | `scatter()` in an area, along a path or on a grid, seeded; `lookAt()` |
 | 3D space | `space3d()`: flat nodes with 3D placement and a perspective camera, sorted back to front, with backface hiding and camera angle presets; `transform: { matrix }` |
+| Keyframes and actions | `curve()` with Bézier handles, `strips()` for actions placed on a timeline, `shapeKeys()` |
+| Modifiers and drawing | `modify()` with repeat, mirror, round corners, offset, noise and wave; `hold()` for animating on twos; `radial()` symmetry; `cleanShape()` |
+| Looks and titles | `softShadow()`, `looks` grade presets (golden hour, blue hour, polarizer, film and more), `titleCard()`, `lowerThird()`, `credits()` |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

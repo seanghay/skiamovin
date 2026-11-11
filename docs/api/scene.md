@@ -756,6 +756,49 @@ function, or stagger options with `each`. `repeat: -1` repeats forever. Values m
 (interpolated in OKLab) or `[x, y]` tuples. Targets with no tween yet evaluate to their `set` value, or to `0`
 (`1` for `opacity` and `scale`).
 
+### Keyframe curves, action strips and shape keys
+
+```ts
+curve([{ time: 0, value: 0 }, { time: 1, value: 300, handle: 'clamped' }, { time: 2, value: 120 }], t);
+strips([{ action: walk, start: 0, repeat: 4 }, { action: wave, start: 2, blendIn: 0.3, influence: 0.8 }], t);
+shapeKeys(mouthBase, { smile, open }, { smile: 0.7, open: talk });
+```
+
+| Function | What it does |
+|---|---|
+| `curve(keys, t)` | A keyframe curve with Bézier handles, as in Blender or After Effects. Each key has `time`, `value` and a `handle`: `'auto'` (smooth, the default), `'clamped'` (smooth, never overshoots), `'linear'`, `'constant'` (holds), or `'free'` with `in` and `out` offsets `[dt, dv]` |
+| `strips(list, t, base?)` | Values from reusable actions (`{ duration, values(t) }`) placed as strips, like Blender's NLA editor. Strips can `repeat`, change `speed`, fade with `blendIn` and `blendOut`, count by `influence`, and `'replace'` or `'add'` to what's below |
+| `shapeKeys(base, keys, weights)` | Blends SVG path data toward named target shapes by weight. Targets need the same commands as the base |
+
+### Path modifiers, holds and symmetry
+
+```ts
+const flower = modify('M0 0 C20 -40 60 -40 80 0', [modifiers.repeat(12, { rotate: 30 }), modifiers.roundCorners(6)]);
+const stepped = hold(t, 24, 2); // animate "on twos"
+```
+
+| Function | What it does |
+|---|---|
+| `modify(path, stack)` | Applies modifiers in order, like a modifier stack, and returns a new `Path` |
+| `modifiers.repeat(count, { x?, y?, rotate?, scale? })` | Copies, each moved, turned and scaled from the last |
+| `modifiers.mirror(axis, at?)` | Adds a mirrored copy across `x = at` or `y = at` |
+| `modifiers.roundCorners(radius)`, `offset(distance)`, `noise(segment, amount, seed?)`, `wave(amount)` | Rounds corners, grows the shape, roughens the outline, or bends it into a wave |
+| `hold(t, frameRate, every?)` | Time held for `every` frames (default 2), for the stepped look of hand-drawn animation |
+| `radial(count, center, make)` | Copies of a node turned around a point, like radial symmetry |
+| `cleanShape(points)` | Turns a rough drawn line into a clean line, circle or polygon: `{ kind, d }` |
+
+### Looks and titles
+
+| Function | What it does |
+|---|---|
+| `softShadow(elevation?, color?)` | Shadows like diffused light: a tight contact shadow and a wide soft one. Use as `shadow` |
+| `looks.goldenHour()`, `blueHour()`, `warm()`, `cool()`, `polarizer()`, `film()`, `punchy()` | Grades for a mood, time of day or lens filter. Use as `grade` |
+| `titleCard(title, subtitle?, options?)` | A centered title that rises in and fades out at `out` seconds |
+| `lowerThird(name, role?, options?)` | A name and role on a bar that slides in from the left |
+| `credits(lines, { speed?, start? })` | Scrolling credits from headings and `[role, name]` lines |
+
+Title templates take `time` (default: the current time), `out`, `color`, `accent` and `fontFamily`, plus styles.
+
 ### 3D space: `space3d`
 
 ```ts

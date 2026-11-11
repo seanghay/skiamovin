@@ -58,9 +58,14 @@ export {
   posterize,
   threshold,
 } from './grading.ts';
+export type { Action, Key, Strip } from './keyframes.ts';
+export { curve, shapeKeys, strips } from './keyframes.ts';
+export { credits, looks, lowerThird, softShadow, titleCard } from './looks.ts';
 export { deliveryPresets, LoudnessMeter, loudnessGain } from './loudness.ts';
 export type { MathOptions } from './math.ts';
 export { math } from './math.ts';
+export type { PathModifier } from './modifiers.ts';
+export { cleanShape, hold, modifiers, modify, radial } from './modifiers.ts';
 export type {
   AudioRole,
   Child,
