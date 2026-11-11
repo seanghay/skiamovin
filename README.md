@@ -30,9 +30,29 @@ await render.execute();
 
 - **Skia drawing.** Canvas, paths, paints, gradients, image filters, SkSL shaders, text layout, SVG and PDF. The
   API follows [`skia-safe`](https://github.com/rust-skia/rust-skia), in camelCase.
-- **Layout.** Flexbox, CSS Grid and block layout from [Taffy](https://github.com/DioxusLabs/taffy).
-- **Scenes.** Describe each frame as a tree of boxes, text, images, video and audio. Skiamovin handles layout,
-  animation helpers, audio mixing and encoding. Or draw every frame yourself with the canvas.
+- **Layout.** Flexbox, CSS Grid and block layout from [Taffy](https://github.com/DioxusLabs/taffy), and
+  Tailwind-style classes such as `box({ class: 'flex items-center gap-4 p-8 rounded-2xl bg-slate-900' })`.
+- **Scenes.** Describe each frame as a tree of boxes, text, images, video and audio. Every frame is a pure
+  function of time, so any frame renders on its own and every build gives the same result. Or draw each frame
+  yourself with the canvas.
+- **Animation.** Easings, keyframe curves with Bézier handles, timelines, staggers, action strips, springs set by
+  feel (SwiftUI's `response` and `bounce`), momentum and rubber banding, motion that follows layout changes, text
+  animators and path morphing.
+- **Looks.** Color grading with LUTs and curves, look presets, effects (grain, glow, halftone, lens distortion),
+  glass, layer styles, mattes, soft shadows, animated backgrounds and all 214
+  [gl-transitions](https://gl-transitions.com).
+- **Film tools.** Motion blur from a shutter angle, shot sizes, camera moves, handheld shake, depth of field,
+  title cards, lower thirds and credits.
+- **Type, code and captions.** Text as vector shapes, per-letter variable font axes, fit-to-width, code blocks
+  that animate between versions (highlighted by Shiki), and captions from SRT, WebVTT or word timings.
+- **Explainers.** LaTeX math typeset in Rust, graphs and axes, Mermaid diagrams, 2D physics with Rapier, and a
+  camera that pans and zooms.
+- **3D.** Cards in 3D space, lit meshes (boxes, spheres, tori, extruded shapes and text) with an optional depth
+  buffer, and ray-marched scenes with soft shadows.
+- **Sound.** Audio mixing, music that ducks under dialogue, stems by role, beat and onset detection, MIDI files,
+  and loudness normalization to a LUFS target.
+- **Command line.** `npx skiamovin render`, `still`, `sheet` (a contact sheet of a whole video) and `inspect`
+  (the composition and its node tree as JSON, for tools and AI agents).
 - **Fast on macOS.** Frames render on the GPU with Metal and go to the hardware encoder without copying pixels.
 - **In the browser.** The same API runs as WebAssembly with WebGL2. Previews and exports run in Web Workers and
   encode with WebCodecs.
@@ -82,8 +102,12 @@ npm test               # full test suite (macOS)
 
 ## Examples
 
-- [`examples/`](examples): ten short example videos and a product launch film. Run
-  `examples/make-assets.sh` first to generate the media they use, then `node examples/render-all.ts`.
+- [`examples/`](examples): 23 example videos, from lower thirds and kinetic type to physics, code walkthroughs,
+  3D and captions, plus a product launch film. Run `examples/make-assets.sh` and `examples/fetch-assets.sh`
+  first, then `node examples/render-all.ts`, or render one with `npx skiamovin render`.
+- [`examples/transformer`](examples/transformer): a 97-second explainer of how a Transformer works, with RoPE,
+  shot as one continuous camera move. It renders in English (`22-how-transformers-work.ts`) and Khmer
+  (`23-how-transformers-work-km.ts`).
 - [`examples/web-studio`](examples/web-studio): a Vite app with a live preview, editable props and MP4 export.
 
 ## Documentation
