@@ -14,6 +14,9 @@ export const fonts = {
   din: font('DIN Alternate Bold.ttf', 'DIN Alternate'),
   courier: font('Courier New Bold.ttf', 'Courier New'),
   khmer: font('Khmer Sangam MN.ttf', 'Khmer Sangam MN'),
+  /** San Francisco, a variable font with weight and width axes. */
+  sf: new FontAsset(new FilePathSource('/System/Library/Fonts/SFNS.ttf'), { family: 'SF Pro' }),
+  menlo: new FontAsset(new FilePathSource('/System/Library/Fonts/Menlo.ttc'), { family: 'Menlo' }),
 };
 
 export const asset = (name: string) => new URL(`./assets/${name}`, import.meta.url).pathname;
