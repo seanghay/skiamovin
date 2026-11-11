@@ -26,6 +26,7 @@ import {
   space3d,
   span,
   spring,
+  stroke,
   text,
   vignette,
 } from 'skiamovin/scene';
@@ -45,16 +46,21 @@ const SANS = 'Google Sans',
 const ADV = 0.6;
 
 const C = {
-  bg: '#05070d',
-  text: '#eef2f8',
-  muted: '#8b98ad',
-  dim: '#3b4659',
-  glass: 'rgba(255,255,255,0.045)',
-  edge: 'rgba(255,255,255,0.14)',
-  q: '#6ee7ff',
-  k: '#ff8bd8',
-  v: '#c4f56b',
-  warm: '#ffd36e',
+  bg: '#f5f6fa',
+  text: '#0f172a',
+  muted: '#5b6b82',
+  dim: '#94a3b8',
+  // Accents are deep enough to read on a light background.
+  q: '#0891b2',
+  k: '#db2777',
+  v: '#4d7c0f',
+  warm: '#d97706',
+  surface: '#ffffff',
+  line: 'rgba(15,23,42,0.12)',
+  faint: 'rgba(15,23,42,0.04)',
+  cell: '#e9edf3',
+  dots: '#d3d9e4',
+  shadow: 'rgba(15,23,42,0.10)',
 };
 
 // Timeline, in seconds. Each section is one stretch of the same continuous shot.
@@ -144,16 +150,21 @@ function tile(
       size: { width: token.text.length * size * ADV + pad * 2, height: size * 1.25 + pad * 1.1 },
       padding: [pad * 0.55, pad],
       borderRadius: 10 + size * 0.12,
-      background: interpolateColor(tintAmount, [0, 1], [`rgba(255,255,255,${0.045 * split})`, tint]),
+      background: interpolateColor(tintAmount, [0, 1], [`rgba(255,255,255,${split})`, tint]),
       border: 1.5,
-      borderColor: interpolateColor(glow, [0, 1], [`rgba(255,255,255,${0.14 * split})`, tint]),
-      shadow: glow > 0.01 ? { color: tint, blur: 30 * glow } : undefined,
+      borderColor: interpolateColor(glow, [0, 1], [`rgba(15,23,42,${0.12 * split})`, tint]),
+      shadow:
+        glow > 0.01
+          ? { color: tint, blur: 26 * glow }
+          : split > 0
+            ? { color: `rgba(15,23,42,${0.08 * split})`, offset: [0, 4], blur: 12 }
+            : undefined,
       justifyContent: 'center',
       alignItems: 'center',
       opacity,
     },
     [
-      text(lead ? [span('␣', { color: `rgba(139,152,173,${split})` }), token.text.slice(1)] : token.text, {
+      text(lead ? [span('␣', { color: `rgba(100,116,139,${split})` }), token.text.slice(1)] : token.text, {
         fontFamily: MONO,
         fontSize: size,
         color: C.text,
@@ -163,7 +174,7 @@ function tile(
   );
 }
 
-const diverging = (v: number) => interpolateColor(v, [-1, 0, 1], ['#3d7bff', '#121a2a', '#ffb547']);
+const diverging = (v: number) => interpolateColor(v, [-1, 0, 1], ['#2563eb', '#d3dae6', '#f59e0b']);
 
 /** A column of colored cells: a slice of a token's 4,096-number vector. */
 function vector(seed: string, cells: number, width: number, reveal: number, shimmer: number, t: number) {
@@ -202,7 +213,7 @@ function heatmap(weights: number[][], o: { cell: number; color: Color; reveal: n
           ...abs(c * (cell + gap), r * (cell + gap)),
           size: { width: cell, height: cell },
           borderRadius: cell * 0.2,
-          background: masked ? 'rgba(255,255,255,0.025)' : interpolateColor(w / max, [0, 1], ['#101827', color]),
+          background: masked ? C.faint : interpolateColor(w / max, [0, 1], [C.cell, color]),
           opacity: masked ? clamp01(reveal * 2 - 1) : shown,
           transform: masked ? undefined : { scale: 0.6 + 0.4 * Easing.outBack(shown) },
         }),
@@ -246,14 +257,15 @@ function dial(cx: number, cy: number, r: number, opacity: number, ticks = 12) {
       size: { width: r * 2, height: r * 2 },
       borderRadius: r,
       border: 2,
-      borderColor: 'rgba(255,255,255,0.16)',
-      background: 'rgba(255,255,255,0.025)',
+      borderColor: C.line,
+      background: C.surface,
+      shadow: { color: C.shadow, offset: [0, 6], blur: 18 },
     }),
     ...Array.from({ length: ticks }, (_, i) =>
       box({
         ...abs(r - 1, 4),
         size: { width: 2, height: r * 0.12 },
-        background: 'rgba(255,255,255,0.18)',
+        background: 'rgba(15,23,42,0.22)',
         transformOrigin: [1, r - 4],
         transform: { rotate: (i * 360) / ticks },
       }),
@@ -273,8 +285,10 @@ const SENT = rowLayout(SENTENCE, SENT_SIZE, 16, 14, D.x);
 function cameraAt(t: number) {
   return cameraMove(
     [
-      { time: 0, camera: { x: A.x, y: A.y + 40, zoom: 1.35 } },
-      { time: 6.5, camera: { x: A.x, y: A.y, zoom: 1.15 } },
+      { time: 0, camera: { x: A.x, y: A.y + 30, zoom: 1.4 } },
+      { time: 2.6, camera: { x: A.x + 120, y: A.y + 10, zoom: 1.2 } },
+      { time: 5.2, camera: { x: A.x + 140, y: A.y + 10, zoom: 1.16 } },
+      { time: 6.6, camera: { x: A.x, y: A.y + 60, zoom: 1.1 } },
       { time: T.tokens + 2, camera: { x: A.x, y: A.y, zoom: 1.05 } },
       { time: T.embed + 1.5, camera: { x: A.x, y: A.y + 230, zoom: 1.0 } },
       { time: T.attend - 0.5, camera: { x: A.x + 60, y: A.y + 250, zoom: 1.0 } },
@@ -300,6 +314,75 @@ function cameraAt(t: number) {
 
 // Sections, drawn in world coordinates. Each returns nothing when it isn't on screen.
 
+// The model's guesses for the next token, bursting out of the cursor: bigger and closer means more likely. The same
+// probabilities return at the end of the film.
+// Word, probability, and the direction it flies (degrees, 0 = right), away from the prompt's text on the left.
+const CANDIDATES: [string, number, number][] = [
+  ['mat', 0.41, 4],
+  ['floor', 0.16, 42],
+  ['couch', 0.11, -40],
+  ['bed', 0.07, 78],
+  ['edge', 0.05, -76],
+  ['roof', 0.03, 112],
+  ['chair', 0.03, -110],
+  ['rug', 0.02, 22],
+  ['table', 0.02, -20],
+  ['sofa', 0.02, 60],
+];
+
+function candidateCloud(t: number, cx: number, cy: number, size: number): Child[] {
+  const out = ramp(t, 5.0, 5.7);
+  if (t < 2.7 || out >= 1) return [];
+  const kids: Child[] = [];
+  CANDIDATES.forEach(([word, p, angle], i) => {
+    const k = spring({ timestamp: t - 2.8 - i * 0.07, from: 0, to: 1, response: 0.55, bounce: 0.2 });
+    if (k <= 0.001) return;
+    // Spread around the right of the cursor, likelier words nearer; a slow drift keeps the cloud alive.
+    const a = (angle * Math.PI) / 180;
+    const r = (170 + 320 * (1 - Math.sqrt(p / 0.41))) * k * (1 - out);
+    const drift = { x: 10 * Math.sin(t * 1.3 + i * 2.1), y: 8 * Math.cos(t * 1.1 + i * 1.7) };
+    const x = cx + Math.cos(a) * r + drift.x * k,
+      // Flatter than a circle, so the lowest guesses stay clear of the subtitles.
+      y = cy - Math.sin(a) * r * 0.68 + drift.y * k;
+    const fs = 22 + 30 * Math.sqrt(p / 0.41);
+    const w = word.length * fs * ADV + 36;
+    kids.push(
+      path(`M${cx} ${cy} L${x} ${y}`, {
+        ...abs(0, 0),
+        size: { width: 1, height: 1 },
+        stroke: C.q,
+        strokeWidth: 1 + 3 * Math.sqrt(p / 0.41),
+        strokeCap: 'round',
+        fill: null,
+        opacity: (0.15 + 0.5 * (p / 0.41)) * clamp01(k) * (1 - out),
+      }),
+      box(
+        {
+          ...abs(x - w / 2, y - fs * 0.8),
+          size: { width: w },
+          padding: [fs * 0.22, 14],
+          borderRadius: 12,
+          background: C.surface,
+          border: 1.5,
+          borderColor: C.line,
+          shadow: { color: C.shadow, offset: [0, 6], blur: 16 },
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 2,
+          flexDirection: 'column',
+          opacity: clamp01(k * 1.4) * (1 - out),
+          transform: { scale: (0.6 + 0.4 * k) * (1 - 0.5 * out) },
+        },
+        [
+          text(word, { fontFamily: MONO, fontSize: fs, color: C.text, maxLines: 1 }),
+          text(`${Math.round(p * 100)}%`, { fontFamily: MONO, fontSize: fs * 0.45, color: C.muted }),
+        ],
+      ),
+    );
+  });
+  return kids;
+}
+
 function promptSection(t: number, s: (typeof STRINGS)[Lang]): Child {
   if (t > T.attend + 3 && t < T.predict - 0.5) return null;
   const size = 58;
@@ -318,9 +401,10 @@ function promptSection(t: number, s: (typeof STRINGS)[Lang]): Child {
       ...abs(A.x - 560, top - 34),
       size: { width: 1120, height: size * 1.25 + 68 },
       borderRadius: 26,
-      background: 'rgba(255,255,255,0.04)',
+      background: C.surface,
       border: 1.5,
-      borderColor: 'rgba(255,255,255,0.12)',
+      borderColor: C.line,
+      shadow: { color: C.shadow, offset: [0, 10], blur: 30 },
       opacity: fade(t, 0.1, 0.5) * (1 - split) + (predicting ? 0 : 0),
     }),
   );
@@ -387,15 +471,7 @@ function promptSection(t: number, s: (typeof STRINGS)[Lang]): Child {
       }),
     );
   }
-  if (typingDone && t >= 3 && t < T.tokens) {
-    const guesses = ['mat', 'floor', 'sofa', 'bed', 'roof'];
-    const g = guesses[Math.max(0, Math.floor((t - 3) * 3.2)) % guesses.length]!;
-    kids.push(
-      box({ ...abs(endX + size * ADV + 4, top + 4), opacity: window_(t, 3.0, 6.4, 0.4) * 0.55 }, [
-        text(g, { fontFamily: MONO, fontSize: size, color: C.muted }),
-      ]),
-    );
-  }
+  if (typingDone && t < T.tokens) kids.push(...candidateCloud(t, typedX + 8, top + size * 0.62, size));
   if (predicting) {
     kids.push(...prediction(t, appendedSlot(endX, size), top, size, s));
     for (const a of appended)
@@ -485,7 +561,7 @@ function prediction(t: number, endX: number, top: number, size: number, s: (type
           box({
             size: { width: 900 * (p.bars[j]! / 0.41) * grow, height: 38 },
             borderRadius: 10,
-            background: winner ? interpolateColor(pick, [0, 1], [C.q, C.warm]) : '#26324a',
+            background: winner ? interpolateColor(pick, [0, 1], [C.q, C.warm]) : '#d5dce7',
             shadow: winner ? { color: C.warm, blur: 24 * pick } : undefined,
           }),
           text(`${Math.round(p.bars[j]! * 100 * grow)}%`, {
@@ -575,7 +651,7 @@ function attentionSection(t: number, s: (typeof STRINGS)[Lang]): Child {
             ...abs(p.x - 6, p.y - 6),
             size: { width: 12, height: 12 },
             borderRadius: 6,
-            background: '#ffffff',
+            background: C.q,
             shadow: { color: C.q, blur: 14 },
             opacity: 0.9 * fadeOut,
           }),
@@ -770,9 +846,9 @@ function headGrid(h: (typeof HEADS)[number], cell: number) {
       size: { width: side + 48, height: side + 48 },
       padding: 24,
       borderRadius: 26,
-      background: 'rgba(12,18,30,0.86)',
+      background: 'rgba(255,255,255,0.94)',
       border: 1.5,
-      borderColor: 'rgba(255,255,255,0.12)',
+      borderColor: C.line,
     },
     [g],
   );
@@ -805,9 +881,9 @@ function threeD(t: number, s: (typeof STRINGS)[Lang]): Child {
       node: box({
         size: { width: 560, height: 380 },
         borderRadius: 28,
-        background: interpolateColor(glow, [0, 1], ['rgba(110,231,255,0.05)', 'rgba(110,231,255,0.35)']),
+        background: interpolateColor(glow, [0, 1], ['rgba(8,145,178,0.07)', 'rgba(8,145,178,0.32)']),
         border: 2,
-        borderColor: interpolateColor(glow, [0, 1], ['rgba(255,255,255,0.16)', C.q]),
+        borderColor: interpolateColor(glow, [0, 1], ['rgba(8,145,178,0.28)', C.q]),
         opacity: stackOn * clamp01((t - T.layers - 1.6) * 4 - i * 0.35),
       }),
       x: -360,
@@ -871,18 +947,47 @@ function layerLegend(t: number, s: (typeof STRINGS)[Lang]): Child {
 }
 
 function titleCard(t: number, s: (typeof STRINGS)[Lang]): Child {
-  const on = window_(t, 4.4, T.tokens + 0.6, 0.8);
-  if (on <= 0) return null;
+  const at = 5.5;
+  const leave = 1 - ramp(t, 7.5, 8.3);
+  if (t < at || leave <= 0) return null;
+  const lift = (1 - leave) * -60;
   return box(
-    { ...abs(0, 150), size: { width: W }, flexDirection: 'column', alignItems: 'center', gap: 18, opacity: on },
+    {
+      ...abs(0, 600),
+      size: { width: W },
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 14,
+      opacity: leave,
+      transform: { translateY: lift },
+    },
     [
+      text('LLAMA 3 · ATTENTION · RoPE', {
+        fontFamily: MONO,
+        fontSize: 22,
+        letterSpacing: 4,
+        color: C.q,
+        opacity: fade(t, at, 0.5),
+        transform: { translateY: (1 - fade(t, at, 0.5)) * 14 },
+      }),
       text(s.title, {
         fontFamily: SANS,
-        fontSize: 88,
+        fontSize: 84,
         fontWeight: 700,
         color: C.text,
-        transform: { translateY: (1 - fade(t, 4.4, 0.9)) * 30 },
-        textShadow: { color: 'rgba(110,231,255,0.35)', blur: 40 },
+        split: {
+          by: 'words',
+          style: (u) => {
+            const k = spring({ timestamp: t - at - 0.2 - u.index * 0.09, from: 0, to: 1, response: 0.5, bounce: 0.15 });
+            return { opacity: clamp01(k * 1.6), y: (1 - k) * 40 };
+          },
+        },
+      }),
+      stroke('M0 14 C140 2 300 22 440 10 S600 4 660 12', {
+        size: 9,
+        taper: [20, 80],
+        color: C.warm,
+        draw: ramp(t, at + 0.9, at + 1.7),
       }),
     ],
   );
@@ -911,9 +1016,10 @@ function chapter(t: number, s: (typeof STRINGS)[Lang]): Child {
       gap: 14,
       padding: [12, 22],
       borderRadius: 40,
-      background: 'rgba(10,14,24,0.7)',
+      background: 'rgba(255,255,255,0.9)',
       border: 1.5,
-      borderColor: 'rgba(255,255,255,0.1)',
+      borderColor: C.line,
+      shadow: { color: C.shadow, offset: [0, 4], blur: 14 },
       opacity: on,
       transform: { translateX: (1 - on) * -24 },
     },
@@ -931,7 +1037,7 @@ function endCard(t: number, s: (typeof STRINGS)[Lang]): Child {
     {
       ...abs(0, 0),
       size: VIEW,
-      background: `rgba(5,7,13,${0.92 * on})`,
+      background: `rgba(245,246,250,${0.94 * on})`,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -967,7 +1073,7 @@ export function transformerFilm(lang: Lang): Composition {
       const zoom = cam.zoom ?? 1;
       // The dotted floor moves at a third of the camera's speed, for depth.
       const par = { x: -(cam.x * 0.33) % 56, y: -(cam.y * 0.33) % 56 };
-      return box({ size: VIEW, effects: [vignette({ amount: 0.45, softness: 0.7 }), grain({ amount: 0.025 })] }, [
+      return box({ size: VIEW, effects: [vignette({ amount: 0.12, softness: 0.8 }), grain({ amount: 0.02 })] }, [
         audio(music, { role: 'music', volume: (x) => 0.9 * Math.min(1, x / 2, (T.total - x) / 4) }),
         box(
           {
@@ -975,14 +1081,14 @@ export function transformerFilm(lang: Lang): Composition {
             size: { width: W + 224, height: H + 224 },
             transform: [{ translate: [par.x, par.y] }, { scale: 1 + (zoom - 1) * 0.25 }],
           },
-          [backgrounds.dots({ background: C.bg, color: '#1a2437', spacing: 56, size: 1.8, fade: 0.5 })],
+          [backgrounds.dots({ background: C.bg, color: C.dots, spacing: 56, size: 1.8, fade: 0.5 })],
         ),
         // A soft light that follows the action.
         box({
           ...abs(W / 2 - 900, H / 2 - 700),
           size: { width: 1800, height: 1400 },
           borderRadius: 900,
-          background: 'rgba(90,140,255,0.07)',
+          background: 'rgba(255,255,255,0.75)',
           blur: 160,
         }),
         camera(cam, VIEW, [
