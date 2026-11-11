@@ -66,6 +66,9 @@ export async function listTransitions(): Promise<TransitionInfo[]> {
   return [...(await loadTransitions()).info.values()];
 }
 
+/** Plain names for the basic film transitions. */
+const ALIASES: Record<string, string> = { dissolve: 'Fade', fade: 'FadeColor', wipe: 'DirectionalWipe' };
+
 /** SkSL source and default uniforms for a loaded transition. @internal */
 export function transitionProgram(name: string): {
   sksl: string;
@@ -73,6 +76,7 @@ export function transitionProgram(name: string): {
   textures: string[];
 } {
   if (!loaded) throw new Error('transitions are not loaded yet');
+  name = ALIASES[name] ?? name;
   const sksl = loaded.sksl[name];
   const info = loaded.info.get(name);
   if (!sksl || !info) {

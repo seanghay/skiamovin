@@ -73,3 +73,13 @@ test('transitions: every one in the collection compiles and renders', async () =
   assert.deepEqual(failed, []);
   await assert.rejects(() => frame(() => transition('LumaWipe', 0.5, red(), blue())), /needs a texture 'luma'/);
 });
+
+test('transitions: basic film names', async () => {
+  await init();
+  await listTransitions();
+  const at = (name: string) => frame(() => transition(name, 0.5, red(), blue(), { size: { width: W, height: H } }));
+  assert.deepEqual(await at('dissolve'), await at('Fade'));
+  assert.deepEqual(await at('wipe'), await at('DirectionalWipe'));
+  // Halfway through a fade to black, the picture is nearly black.
+  assert.ok(center(await at('fade')).every((v) => v < 16));
+});

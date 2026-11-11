@@ -356,6 +356,9 @@ listTransitions(): Promise<TransitionInfo[]>   // name, description, author, lic
 
 Blends between two scenes with a shader from [gl-transitions](https://gl-transitions.com) (all 214, tested to
 compile and render). `progress` 0 shows `from` and 1 shows `to`. Names are PascalCase, such as `'CrossZoom'`;
+The basic film transitions also have plain names: `'dissolve'` (a cross-fade), `'fade'` (through black, or the
+`color` param) and `'wipe'`. A cut is no transition at all.
+
 `listTransitions()` lists them with their parameters. Two transitions (`LumaWipe`, `DisplacementMap`) also need
 an image passed in `textures`. Most transitions are MIT-licensed; each one's license and author are in its info.
 In a `series`, set `transition` on an item to blend into the next one, centered on the cut:
@@ -964,6 +967,23 @@ not as an image.
 
 Pele is loaded the first time a diagram is drawn, so it costs nothing when unused. Each diagram is laid out once
 per renderer and reused, and the Node and WebAssembly builds draw it the same way.
+
+### Film camera: `shot`, `cameraMove`, `handheld` and `edit`
+
+```ts
+const view = { width: 1920, height: 1080 };
+const wide = shot(stage, 'wide', view);
+const close = shot(hero, 'closeUp', view, { place: 'left' });
+const cam = handheld(cameraMove([{ time: 0, camera: wide }, { time: 3, camera: close }], t), t);
+camera(cam, view, [scene]);
+```
+
+| Function | What it does |
+|---|---|
+| `shot(subject, size, viewport, { place?, headroom? })` | Camera state for a standard shot of a rectangle framed like a standing person: `'wide'`, `'long'`, `'full'`, `'medium'`, `'closeUp'` or `'extremeCloseUp'`. Closer shots keep the top (the face). `place: 'left'` or `'right'` puts the subject on that third line, leaving look room |
+| `cameraMove(keys, t, easing?)` | The camera during a move through `{ time, camera }` keys: pan, tilt, dolly and zoom. Eases in and out by default, and zooms evenly in scale |
+| `handheld(state, t, { amount?, seed? })` | Adds a handheld camera's slow drift and small shake from seeded noise. 1 is a steady operator, 3 is running |
+| `edit(cuts, t)` | Picks a camera from `{ time, camera }` cuts, like an edit list over several cameras on one scene |
 
 ### Graphs, camera and reveals
 

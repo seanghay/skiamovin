@@ -638,7 +638,10 @@ export function sequence(
 }
 
 export interface TransitionOptions {
-  /** A transition name from gl-transitions, such as 'CrossZoom' or 'Dreamy'. See `listTransitions()`. */
+  /**
+   * A transition name from gl-transitions, such as 'CrossZoom' or 'Dreamy' (see `listTransitions()`), or one of the
+   * basic film transitions: 'dissolve', 'fade' (through black, or the `color` param) and 'wipe'.
+   */
   name: string;
   /** Seconds, centered on the cut. */
   duration: number;

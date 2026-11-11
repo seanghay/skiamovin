@@ -32,6 +32,7 @@ design. Everything listed as **implemented** is covered by the test suite (`npm 
 | Type as shapes | `textPaths()` per character, word or line; `variableText()` with font axes per character; `fitText()` to fill a width with a variable axis |
 | Rhythm and MIDI | `analyzeAudio()` also finds onsets, tempo and beats (steady tempo); `pulse()` and `beatAt()`; `parseMidi()` for Standard MIDI Files with tempo changes |
 | Motion blur | `motionBlur: { shutter, samples }` on a composition: averages moments within the shutter in half-float linear light |
+| Film camera | `shot()` sizes with rule-of-thirds placement, `cameraMove()`, `handheld()`, `edit()` between cameras, and 'dissolve', 'fade' and 'wipe' transition names |
 | Paths | `path()` nodes with stroke, fill, trimming by length and arrowheads; `morphPath`; `alongPath` |
 | Animated text | `split` text by characters, words or lines; `textAnimator` range selectors; `scramble`, `counter`, `graphemeCount` |
 | Same output on Node and the web | Text is drawn from glyph outlines by default; `test/golden.test.ts` checks shapes, paths and layout match exactly between the Node addon and WebAssembly, and text and shaders within 4/255 |

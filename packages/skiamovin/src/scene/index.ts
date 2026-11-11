@@ -39,6 +39,8 @@ export type { Effect, GlassOptions, LayerStyle } from './effects.ts';
 export { chromaticAberration, glow, grain, halftone, pixelate, sharpen, vignette } from './effects.ts';
 export type { Axes, AxesOptions, CameraState } from './explain.ts';
 export { axes, camera, create, fadeIn, fitCamera, indicate, numberLine } from './explain.ts';
+export type { ShotOptions, ShotSize } from './film.ts';
+export { cameraMove, edit, handheld, shot } from './film.ts';
 export type { GlyphShape, TextPathsOptions } from './glyphs.ts';
 export { fitText, fontAxes, textPaths, variableText } from './glyphs.ts';
 export type { AdjustOptions, CurvesOptions, Grade, LevelsOptions, ParsedLut } from './grading.ts';
