@@ -5,6 +5,7 @@ examples use Metal and VideoToolbox, so they need macOS.
 
 ```sh
 examples/make-assets.sh          # generate the media the examples use (needs ffmpeg)
+examples/fetch-assets.sh         # download the openly licensed fonts and music some examples use
 node examples/render-all.ts      # render every numbered example into examples/output/ and time them
 npx skiamovin render examples/16-3d-showcase.ts examples/output/16-3d-showcase.mp4   # render one
 examples/launch/stills.sh        # take stills from those videos for the launch film
@@ -34,5 +35,6 @@ node examples/launch/render.ts   # render the launch film
 | `19-film-gallery.ts` | Photos as 3D cards with a focus pull, handheld drift, a film grade and grain |
 | `20-beat-visualizer.ts` | Detected beats pulse radial petals and scattered sparks |
 | `21-math-lesson.ts` | A vector field, a formula written on and a camera that zooms to a point |
+| `22-how-transformers-work.ts` | A 90-second explainer of the Transformer, with cuts on the music's beats. Run `examples/fetch-assets.sh` first |
 | `launch/` | A 48-second product film with a generated score |
 | `web-studio/` | A Vite app: live preview, editable props and MP4 export in the browser |
