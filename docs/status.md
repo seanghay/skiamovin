@@ -1,7 +1,7 @@
 # Implementation status
 
 This page tracks what the current build implements versus what the rest of the docs describe as the target
-design. Everything listed as **implemented** is covered by the test suite (`npm test`).
+design. Everything listed as **implemented** is covered by the test suite (`npm test`). What comes next is in the [roadmap](roadmap.md).
 
 ## Implemented
 

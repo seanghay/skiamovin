@@ -19,3 +19,7 @@ examples/web-studio/e2e-output/
 *.log
 .vscode/
 .idea/
+
+# Research notes and reports
+research_notes/
+reports/
