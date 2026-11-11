@@ -74,7 +74,7 @@ export const T = {
   layers: 67,
   predict: 79,
   end: 90,
-  total: 95,
+  total: 97.5,
 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -386,7 +386,8 @@ function candidateCloud(t: number, cx: number, cy: number, size: number): Child[
 }
 
 function promptSection(t: number, s: (typeof STRINGS)[Lang]): Child {
-  if (t > T.attend + 3 && t < T.predict - 0.5) return null;
+  // Hidden between its two scenes, and once the end card covers it.
+  if ((t > T.attend + 3 && t < T.predict - 0.5) || t > T.end + 1.2) return null;
   const size = 58;
   const typed = Math.floor(interpolate(t, [0.4, 2.6], [0, 18]));
   const split = ramp(t, T.tokens + 0.4, T.tokens + 2.0);
@@ -1198,26 +1199,77 @@ function chapter(t: number, s: (typeof STRINGS)[Lang]): Child {
 function endCard(t: number, s: (typeof STRINGS)[Lang]): Child {
   const on = fade(t, T.end, 1);
   if (on <= 0) return null;
+  // First the paper that started it all, then the credit.
+  const credit = T.end + 3.4;
+  const paper = 1 - fade(t, credit - 0.5, 0.5);
+  const k = spring({ timestamp: t - credit - 0.25, from: 0, to: 1, response: 0.6, bounce: 0.1 });
+  const out = 1 - fade(t, T.total - 0.9, 0.9);
   return box(
     {
       ...abs(0, 0),
       size: VIEW,
-      background: `rgba(245,246,250,${0.94 * on})`,
+      background: `rgba(245,246,250,${0.95 * on})`,
       justifyContent: 'center',
       alignItems: 'center',
     },
     [
-      box({ flexDirection: 'column', alignItems: 'center', gap: 18, opacity: on }, [
-        text('Attention Is All You Need', {
-          fontFamily: SANS,
-          fontSize: 80,
-          fontWeight: 700,
-          color: C.text,
-          transform: { translateY: (1 - on) * 24 },
-        }),
-        text(s.sources, { fontFamily: SANS, fontSize: 30, color: C.muted, textAlign: 'center' }),
-        text(s.credits, { fontFamily: MONO, fontSize: 20, color: C.dim, margin: { top: 70 } }),
-      ]),
+      paper > 0
+        ? box({ ...abs(0, 0), size: VIEW, justifyContent: 'center', alignItems: 'center', opacity: on * paper }, [
+            box({ flexDirection: 'column', alignItems: 'center', gap: 18 }, [
+              text('Attention Is All You Need', {
+                fontFamily: SANS,
+                fontSize: 80,
+                fontWeight: 700,
+                color: C.text,
+                transform: { translateY: (1 - on) * 24 },
+              }),
+              text(s.sources, { fontFamily: SANS, fontSize: 30, color: C.muted, textAlign: 'center' }),
+            ]),
+          ])
+        : null,
+      t >= credit
+        ? box(
+            {
+              ...abs(0, 0),
+              size: VIEW,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 10,
+              opacity: out,
+            },
+            [
+              text(s.createdBy, {
+                fontFamily: SANS,
+                fontSize: 34,
+                color: C.muted,
+                opacity: fade(t, credit, 0.5),
+                transform: { translateY: (1 - fade(t, credit, 0.5)) * 14 },
+              }),
+              text('Skiamovin', {
+                fontFamily: SANS,
+                fontSize: 128,
+                fontWeight: 700,
+                color: C.text,
+                opacity: clamp01(k * 1.5),
+                transform: { translateY: (1 - k) * 40, scale: 0.94 + 0.06 * k },
+              }),
+              stroke('M0 14 C150 2 330 24 480 10 S640 6 700 12', {
+                size: 11,
+                taper: [24, 90],
+                color: C.q,
+                draw: ramp(t, credit + 0.7, credit + 1.5),
+              }),
+              text(s.credits, {
+                fontFamily: MONO,
+                fontSize: 20,
+                color: C.dim,
+                margin: { top: 60 },
+                opacity: fade(t, credit + 1.2, 0.6),
+              }),
+            ],
+          )
+        : null,
     ],
   );
 }

@@ -20,11 +20,12 @@ interface Strings {
   chapters: [string, string, string, string, string, string, string];
   sources: string;
   credits: string;
+  createdBy: string;
   subtitles: [number, number, string][];
 }
 
 const MODEL = 'Llama 3 8B · 4,096 dims · 32 heads · 128,256 tokens';
-const CREDITS = 'Music: “Infinite Wonder” by Kevin MacLeod (CC0) · Made with Skiamovin';
+const CREDITS = 'Music: “Infinite Wonder” by Kevin MacLeod (CC0)';
 
 export const STRINGS: Record<Lang, Strings> = {
   en: {
@@ -53,6 +54,7 @@ export const STRINGS: Record<Lang, Strings> = {
     chapters: ['Tokens', 'Embeddings', 'Attention', 'RoPE', 'Scores', 'Layers', 'Prediction'],
     sources: 'Vaswani et al., 2017 · RoPE: Su et al., 2021',
     credits: CREDITS,
+    createdBy: 'Created by',
     subtitles: [
       [0.6, 3.4, 'When you type to a language model, it does one thing:'],
       [3.4, 7.6, 'it guesses the next word. So how does it guess?'],
@@ -101,6 +103,7 @@ export const STRINGS: Record<Lang, Strings> = {
     chapters: ['Token', 'វ៉ិចទ័រ', 'Attention', 'RoPE', 'ពិន្ទុ', 'ស្រទាប់', 'ការទាយ'],
     sources: 'Vaswani et al., 2017 · RoPE៖ Su et al., 2021',
     credits: CREDITS,
+    createdBy: 'បង្កើតដោយ',
     subtitles: [
       [0.6, 3.4, 'ពេលអ្នកវាយអត្ថបទទៅម៉ូដែលភាសា វាធ្វើតែរឿងមួយ៖'],
       [3.4, 7.6, 'ទាយពាក្យបន្ទាប់។ តើវាទាយដោយរបៀបណា?'],
